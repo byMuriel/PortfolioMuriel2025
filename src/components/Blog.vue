@@ -5,7 +5,9 @@ import { RouterLink } from 'vue-router'
 // Tipo para un item de la lista
 interface Item {
   id: number
-  nombre: string
+  name: string
+  content: string
+  date: string
 }
 
 // Tipo de respuesta de API
@@ -25,7 +27,11 @@ const datos = ref<Item[]>([])
  * Author: Muriel Vitale
  ***************************************************************/
 async function listar(): Promise<void> {
-  const res = await fetch('/api/read')
+  console.log('listar')
+
+  // const res = await fetch('/api/read')
+  const res = await fetch('http://localhost/Portafolio2025_Services/api.php/api/read')
+  console.log('res:' + JSON.stringify(res))
   const json: Item[] = await res.json()
   datos.value = json
   // datos.value = await res.json()
@@ -44,7 +50,7 @@ async function crear(): Promise<void> {
     return
   }
 
-  const res = await fetch('/api/create', {
+  const res = await fetch('http://localhost/Portafolio2025_Services/api.php/api/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nombre: nombre.value }),
@@ -64,7 +70,7 @@ async function crear(): Promise<void> {
  ***************************************************************/
 async function eliminar(id: number): Promise<void> {
   try {
-    const res = await fetch(`/api/delete/${id}`, {
+    const res = await fetch(`http://localhost/Portafolio2025_Services/api.php/api/delete/${id}`, {
       method: 'DELETE',
     })
 
@@ -100,16 +106,6 @@ onMounted(listar)
         </RouterLink>
       </div>
 
-      <!-- Formulario Crear -->
-      <div class="row justify-content-center align-items-center mb-3">
-        <div class="col-12 col-md-7 mb-2 mb-md-0">
-          <input class="form-control" v-model="nombre" placeholder="Project Name" />
-        </div>
-        <div class="col-12 col-md-5">
-          <button class="btn btn-success w-100" @click="crear()">Save</button>
-        </div>
-      </div>
-
       <!-- Lista de Registros -->
       <div class="text-center mt-4">
         <h2>Items:</h2>
@@ -117,46 +113,19 @@ onMounted(listar)
           <li
             v-for="item in datos"
             :key="item.id"
-            class="d-flex justify-content-between align-items-center border rounded p-2 mb-2"
+            class="border rounded p-2 mb-2 d-flex flex-column text-start"
           >
-            <span>{{ item.id }} - {{ item.nombre }}</span>
-            <button class="btn btn-sm btn-danger" @click="eliminar(item.id)">Delete</button>
+            <span class="fw-bold">{{ item.id }} - {{ item.name }}</span>
+            <p class="mb-1">{{ item.content }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              <span>{{ item.date }}</span>
+            </div>
           </li>
         </ul>
       </div>
     </div>
   </div>
 </template>
-
-<!-- <template>
-  <div class="container-fluid d-flex justify-content-center align-items-center min-vh-100 row">
-    <div class="col-12 titulo">
-      <h1>Blog</h1>
-    </div>
-    <div class="container-fluid d-flex justify-content-center align-items-center col-12 row">
-      <div class="col-4 row">
-        <RouterLink to="/main">
-          <button class="btn btn-primary col-12 m-0">Volver</button>
-        </RouterLink>
-      </div>
-
-      <div class="col-12 mt-3 d-flex justify-content-center align-items-center row">
-        <input class="col-3 me-3" v-model="nombre" placeholder="Nombre" />
-        <button class="col-3" @click="crear()">Crear</button>
-      </div>
-
-      <div div class="col-8 mt-3 d-flex justify-content-center align-items-center row">
-        <h2 class="col-6 mt-3 d-flex justify-content-center align-items-center row">Registros:</h2>
-        <ul class="col-11 mt-3 d-flex justify-content-center align-items-center row">
-          <li class="mb-2" v-for="item in datos" :key="item.id">
-            {{ item.id }} - {{ item.nombre }}
-            <button class="ms-2" @click="eliminar(item.id)">Eliminar</button>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</template> -->
 
 <style>
 @media (min-width: 1024px) {
