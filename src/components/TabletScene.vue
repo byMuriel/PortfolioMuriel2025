@@ -7,7 +7,15 @@
       </div>
     </div>
     <div ref="sceneContainer" class="scene-container">
-      <TabletContent v-if="showTabletContent" />
+      <Teleport to="body">
+        <TabletContent
+          v-if="showTabletContent"
+          :x="screenPosition.x"
+          :y="screenPosition.y"
+          :width="screenSize.width"
+          :height="screenSize.height"
+        />
+      </Teleport>
     </div>
   </div>
 </template>
@@ -47,6 +55,41 @@ let targetTabletPosition
 let originalCameraPos, targetCameraPos
 let originalLookAt = new THREE.Vector3(0, 0, 0)
 let targetLookAt = new THREE.Vector3()
+
+const screenPosition = ref({ x: 0, y: 0 })
+const screenSize = ref({ width: 0, height: 0 })
+
+function updateScreenPosition() {
+  const screenCenter = tabletGroup.position.clone()
+  screenCenter.y += 0.31
+
+  const projected = screenCenter.project(camera)
+  const canvasRect = renderer.domElement.getBoundingClientRect()
+  let xValue
+
+  if (screenWidth <= 480) {
+    xValue = canvasRect.width / 2 - 3.5
+  } else if (screenWidth <= 768) {
+    xValue = canvasRect.width / 2 - 5
+  } else if (screenWidth <= 1024) {
+    xValue = canvasRect.width / 2 - 10
+  } else {
+    xValue = canvasRect.width / 2 - 17
+  }
+
+  screenPosition.value = {
+    x: xValue,
+    y: canvasRect.top + ((1 - projected.y) / 2) * canvasRect.height,
+  }
+
+  const scaleX = canvasRect.width / (camera.right - camera.left)
+  const scaleY = canvasRect.height / (camera.top - camera.bottom)
+
+  screenSize.value = {
+    width: 8.5 * scaleX,
+    height: 11.5 * scaleY,
+  }
+}
 
 const init = async () => {
   const width = sceneContainer.value.clientWidth
@@ -226,6 +269,7 @@ const onClick = (event) => {
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
 
 const animate = () => {
+  updateScreenPosition()
   animationId = requestAnimationFrame(animate)
 
   if (transitionStep === 1) {
@@ -318,6 +362,7 @@ const onWindowResize = () => {
 }
 
 .scene-container {
+  position: relative;
   width: 100%;
   height: 100vh;
   overflow: hidden;

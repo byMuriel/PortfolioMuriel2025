@@ -1,21 +1,39 @@
 <template>
-  <div class="tablet-screen">
+  <div
+    class="tablet-screen"
+    :style="{
+      top: y + 'px',
+      left: x + 'px',
+      width: width + 'px',
+      height: height + 'px',
+    }"
+  >
     <h2>Bienvenido</h2>
     <p>Esto es el contenido de la tablet</p>
   </div>
 </template>
 
+<script setup>
+defineProps({
+  x: Number,
+  y: Number,
+  width: Number,
+  height: Number,
+})
+</script>
+
 <style scoped>
 .tablet-screen {
   position: absolute;
-  top: 50.2%;
-  left: 48.95%;
-  width: 36rem; /* ajusta al tamaño de tu pantalla 3D */
-  height: 48.7rem;
-  background-color: white;
   transform: translate(-50%, -50%);
-  pointer-events: none; /* evita interferir con clics */
-  color: white;
+  background-color: white;
+  pointer-events: none;
+  color: black;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
 }
 </style>
