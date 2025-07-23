@@ -1,12 +1,16 @@
 <template>
   <div class="scene-wrapper">
+    <!-- Preloader -->
     <div v-if="showPreloader" :class="['preloader', { 'fade-out-bg': !isLoading }]">
       <div class="preloader-content" :class="{ 'fade-out-content': !isLoading }">
         <div class="spinner"></div>
         <p class="loading-text">Cargando...</p>
       </div>
     </div>
+
+    <!-- Initial Scene -->
     <div ref="sceneContainer" class="scene-container">
+      <!-- Tablet -->
       <Teleport to="body">
         <TabletContent
           v-if="showTabletContent"
@@ -23,8 +27,6 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import * as THREE from 'three'
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader'
-import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import woodTextureURL from '@/assets/textures/wood-cartoon.jpg'
 import TabletContent from './TabletContent.vue'
@@ -36,14 +38,13 @@ const showPreloader = ref(true)
 const screenWidth = window.innerWidth
 
 let scene, camera, renderer, animationId
-let tablet, fontMesh, table
+let table
 let tabletGroup = new THREE.Group()
-
 let raycaster = new THREE.Raycaster()
 let pointer = new THREE.Vector2()
 
-let zoomProgress = 0
 const zoomDuration = 1.2
+let zoomProgress = 0
 let isZoomed = false
 let initialFrustum = {}
 let finalFrustum = {}
@@ -99,14 +100,12 @@ const init = async () => {
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0xf9f9f9)
 
+  // UBICACIÓN DE LA CÁMARA
   camera = new THREE.OrthographicCamera(-aspect * 10, aspect * 10, 10, -10, 0.1, 100)
   camera.position.set(0, 20, 0)
-  camera.lookAt(0, 0, 0)
-
+  camera.lookAt(0, -0.5, 0)
   originalCameraPos = camera.position.clone()
   targetCameraPos = new THREE.Vector3()
-
-  // UBICACIÓN DE LA CÁMARA
   initialFrustum = {
     top: 10,
     bottom: -10,
@@ -143,7 +142,12 @@ const init = async () => {
   dirLight.position.set(0, 10, 10)
   dirLight.target.position.set(0, 0, 0)
   dirLight.castShadow = true
-  dirLight.shadow.mapSize.set(1024, 1024)
+
+  //dirLight.shadow.mapSize.set(1024, 1024)
+  dirLight.shadow.bias = -0.001
+  dirLight.shadow.mapSize.width = 2048
+  dirLight.shadow.mapSize.height = 2048
+
   scene.add(dirLight)
 
   // Mesa (fondo fijo)
@@ -174,6 +178,10 @@ const init = async () => {
   })
   const screen = new THREE.Mesh(screenGeometry, screenMaterial)
   screen.position.set(-10, 0.15, 0)
+  ///////
+  screen.castShadow = true
+  screen.receiveShadow = true
+  ///////
 
   // Marco blanco hueco
   const outerWidth = 9
@@ -197,7 +205,7 @@ const init = async () => {
   shape.holes.push(hole)
 
   const frameGeometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.04,
+    depth: 10,
     bevelEnabled: false,
   })
   const frameMaterial = new THREE.MeshPhysicalMaterial({
@@ -211,6 +219,10 @@ const init = async () => {
   const frame = new THREE.Mesh(frameGeometry, frameMaterial)
   frame.rotation.x = -Math.PI / 2
   frame.position.set(-10, 0.31, 0)
+  ////////////////
+  frame.castShadow = true
+  frame.receiveShadow = true
+  ////////////////
 
   tabletGroup.add(screen)
   tabletGroup.add(frame)
@@ -241,6 +253,8 @@ const init = async () => {
   }
 
   tabletGroup.position.set(initialTabletX, 0.15, 0)
+  // initialTabletRotation = -35 // o el ángulo que estés usando, pero en negativo
+
   tabletGroup.rotation.y = THREE.MathUtils.degToRad(initialTabletRotation)
   renderer.domElement.addEventListener('click', onClick)
   animate()
