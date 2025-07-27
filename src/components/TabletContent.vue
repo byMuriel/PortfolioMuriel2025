@@ -1,67 +1,47 @@
+<!-- src/components/TabletScreen.vue -->
 <template>
-  <div
-    class="tablet-screen"
-    :style="{
-      top: y + 'px',
-      left: x + 'px',
-      width: width + 'px',
-      height: height + 'px',
-      backgroundImage: `url(${wallpaper})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }"
-  >
-    <div class="containerReloj">
-      <div class="m-0 p-0 hora">17:58</div>
-      <div class="m-0 p-9 fecha">Sun, 20 july</div>
-    </div>
+  <div ref="screen" class="screen-content">
+    <component :is="currentView" @change-screen="handleChangeScreen" />
   </div>
 </template>
 
 <script setup>
-import wallpaper from '@/assets/wallpaperTablet.png'
+import { ref, onMounted, shallowRef } from 'vue'
+import Init from './TabletScreens/Init.vue'
+import Skills from './TabletScreens/Skills.vue'
+import Experience from './TabletScreens/Experience.vue'
 
-defineProps({
-  x: Number,
-  y: Number,
-  width: Number,
-  height: Number,
+const screen = ref(null)
+const domReady = new Promise((resolve) => {
+  onMounted(() => resolve())
+})
+
+// Vista por defecto
+const currentView = shallowRef(Init)
+
+// Manejador de cambio de pantalla
+const handleChangeScreen = (newView) => {
+  currentView.value = newView
+}
+
+defineExpose({
+  screen,
+  domReady,
 })
 </script>
 
 <style scoped>
-.tablet-screen {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  /* background-color: rgb(187, 47, 194); */
-  /* background-color: rgb(38, 217, 249); */
-  /* background-color: rgb(249, 182, 38); */
-  background-color: rgb(38, 87, 249);
-  pointer-events: none;
-  color: black;
-  text-align: center;
-  display: flex;
+.screen-content {
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  /* background-image: url(../assets/wallpaperTablet.png);
+  background-size: cover;
+  background-position: center; */
+  /* display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  border-radius: 0.5rem;
-  box-shadow:
-    inset 0 0 10px rgba(0, 0, 0, 0.5),
-    0 0 8px rgba(0, 0, 0, 0.2);
-}
-.containerReloj {
-  width: 25rem;
-  height: 10rem;
-  background-color: rgba(253, 251, 251, 0.5);
-  border-radius: 1rem;
-  margin: 5rem auto 0 auto;
-  flex-direction: column;
-  justify-content: center;
-}
-.hora {
-  font-family:
-    'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana,
-    sans-serif;
-  font-weight: bolder;
-  font-size: 5rem;
+  justify-content: start;
+  align-items: center;
+  font-family: sans-serif; */
 }
 </style>
