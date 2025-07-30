@@ -6,16 +6,17 @@
 <script setup>
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ref, onMounted, onBeforeUnmount, createApp } from 'vue'
-import html2canvas from 'html2canvas'
 import TabletContent from './TabletContent.vue'
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+// import html2canvas from 'html2canvas'
 
 const container = ref(null)
 const isScreenOn = ref(false)
 
-let renderer, scene, camera, animationId, controls
+let renderer, scene, camera, animationId
 let screenMaterial
+const tabletGroup = new THREE.Group()
 
 // Dimensions and properties of the tablet / Dimensiones y propiedades de la tablet
 const outerWidth = 8
@@ -27,6 +28,21 @@ const verticalThickness = 0.3
 const thickness = 0.3
 const screenWidth = outerWidth - thickness * 2
 const screenHeight = outerHeight - 2 - thickness * 2
+
+// Light variables / Variables de luz
+let leftLight, centerLight, rightLight
+const colorYellow = new THREE.Color(0xffc003) // Color amarillo
+const colorWhite = new THREE.Color(0xfffcfe)
+const colorCian = new THREE.Color(0x03eeff) // Color cian
+const colorPink = new THREE.Color(0xff03b8) // Color rosa
+
+// Variables para la animación
+const startPos = new THREE.Vector3(-15, 30, 30) // Posición inicial
+const endPos = new THREE.Vector3(0, 0, 20) // Posición final
+const startFov = 75 // FOV inicial
+const endFov = 35 // FOV final
+let startTime = null
+let rotationStartedAt = null
 
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
@@ -52,10 +68,10 @@ const screenHeight = outerHeight - 2 - thickness * 2
 onMounted(() => {
   initScene()
   createTablet()
-  addLights()
+  addTopSpotLights()
+  addPrincipalLights()
+  renderer.render(scene, camera)
   startAnimation()
-
-  window.addEventListener('keydown', handleKeyDown)
 })
 /*****************************************************************************************
    * LIFECYCLE HOOK: onBeforeUnmount
@@ -77,7 +93,7 @@ onMounted(() => {
 
    *****************************************************************************************/
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  // window.removeEventListener('keydown', handleKeyDown)
   cancelAnimationFrame(animationId)
   renderer.dispose()
   if (container.value) {
@@ -112,15 +128,10 @@ function initScene() {
   const height = window.innerHeight
   scene = new THREE.Scene()
 
-  // Background image / Imagen de fondo
-  // const loader = new THREE.TextureLoader()
-  // loader.load('ruta/a/tu/imagen.jpg', (texture) => {
-  //   scene.background = texture
-  // })
-
   // Camera / Cámara
-  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100)
-  camera.position.set(0, 0, 20)
+  camera = new THREE.PerspectiveCamera(startFov, width / height, 0.1, 100)
+  // camera.position.set(0, 0, 20)
+  camera.position.set(-15, 30, 30)
 
   // Renderer / Renderizador
   const colorFondo = '#000000' // gris oscuro '#222222' // blanco 0xffffff
@@ -132,13 +143,6 @@ function initScene() {
   renderer.setSize(width, height)
   renderer.setClearColor(colorFondo)
   container.value.appendChild(renderer.domElement)
-
-  // Orbit controls / Controles de órbita
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true // Suaviza el movimiento
-  controls.dampingFactor = 0.05
-  controls.enableZoom = false // Si no quieres hacer zoom
-  controls.enablePan = false
 }
 /*****************************************************************************************
    * FUNCTION: createTablet
@@ -165,8 +169,6 @@ function initScene() {
 
    *****************************************************************************************/
 function createTablet() {
-  const tabletGroup = new THREE.Group()
-
   // Tablet frame / Marco de la Tablet
   const frameMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -229,41 +231,159 @@ function createTablet() {
   tabletGroup.add(screenTarget)
 
   scene.add(tabletGroup)
+  camera.lookAt(tabletGroup.position)
 }
 /*****************************************************************************************
- * FUNCTION: addLights
+ * FUNCTION: addTopSpotLights
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Adds and configures various light sources to the 3D scene to enhance
- *              overall illumination and visual realism.
- *              The configured lights include:
- *              - An ambient light (`AmbientLight`) providing soft global lighting.
- *              - Two directional lights (`DirectionalLight`) simulating sunlight or focused light.
- *              - A spotlight (`SpotLight`) targeting a specific point in the scene.
- *              Additionally, an empty object (`fixedTarget`) is created as the spotlight's
- *              target, positioned at the center of the scene.
- * *****************************************************************************************
- * DESCRIPCIÓN: Añade y configura diversas fuentes de luz a la escena 3D para mejorar la
- *              iluminación general y el realismo visual del entorno.
- *              Las luces configuradas son:
- *              - Luz ambiental (`AmbientLight`) que proporciona iluminación global suave.
- *              - Dos luces direccionales (`DirectionalLight`) simulando luz solar o puntual.
- *              - Un spotlight (`SpotLight`) que enfoca un punto específico de la escena.
- *              También se crea un objeto vacío (`fixedTarget`) como objetivo (target)
- *              para la luz spotlight, situado en el centro de la escena.
+ * DESCRIPTION: Adds three directional SpotLights to the top area of the scene to simulate
+ *              dramatic lighting from different angles.
+ *              Each light is positioned at a different horizontal point:
+ *              - Left (white)
+ *              - Center (white)
+ *              - Right (white)
+ *
+ *              All lights are targeted at the tablet group and configured to cast shadows.
+ *              Shadow rendering is enabled globally, and the tablet group is marked
+ *              as both a shadow caster and receiver.
+ *
+ *              Lighting details include intensity, angle, penumbra, and decay to control
+ *              realism and softness of shadows.
+ *****************************************************************************************
+ * DESCRIPCIÓN: Añade tres luces tipo SpotLight en la parte superior de la escena para
+ *              simular una iluminación dramática desde distintos ángulos.
+ *              Cada luz está ubicada en un punto horizontal distinto:
+ *              - Izquierda (blanca)
+ *              - Centro (blanca)
+ *              - Derecha (blanca)
+ *
+ *              Todas las luces están dirigidas hacia el grupo de la tablet y configuradas
+ *              para proyectar sombras. El renderizador habilita el uso de sombras y
+ *              la tablet se marca como emisora y receptora de sombras.
+ *
+ *              Se ajustan propiedades como intensidad, ángulo, penumbra y decaimiento
+ *              para lograr sombras suaves y realistas.
  *****************************************************************************************/
-function addLights() {
-  // Luces
-  scene.add(new THREE.AmbientLight(0xffffff, 0.4))
-  const light = new THREE.DirectionalLight(0xffffff, 0.8)
-  light.position.set(5, 10, 7)
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-  directionalLight.position.set(10, 10, 10)
-  const spotlight = new THREE.SpotLight(0xffffff, 1)
-  spotlight.position.set(0, 10, 10)
+function addTopSpotLights() {
+  const xlight = 50
+  const ylight = 50
+  const zlight = -40
+  const lightIntensity = 300
+  const lightDistance = 100
+  const lightAngle = Math.PI // / 2 // 22.5 degrees
+  const lightPenumbra = 1 // 0.2 // Suavizado de la luz
+  const lightDecay = 1 // Decaimiento de la luz
 
-  // Crear un objeto vacío en el centro de la escena como punto fijo
+  // Luz amarilla desde la parte superior izquierda
+  // const leftLight = new THREE.SpotLight(0xffc003, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Color amarillo
+  leftLight = new THREE.SpotLight(
+    colorWhite,
+    lightIntensity,
+    lightDistance,
+    lightAngle,
+    lightPenumbra,
+    lightDecay,
+  ) // Color amarillo
+  leftLight.position.set(-xlight, 45, zlight) // Posición de la luz (arriba a la izquierda)
+  leftLight.target = tabletGroup // Apunta hacia el cubo
+  leftLight.castShadow = true // Habilitar sombras
+  scene.add(leftLight)
+
+  // Luz azul desde el centro superior
+  // const centerLight = new THREE.SpotLight(0x1accd9, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Color azul
+  centerLight = new THREE.SpotLight(
+    colorWhite,
+    lightIntensity,
+    lightDistance,
+    lightAngle,
+    lightPenumbra,
+    lightDecay,
+  ) // Color azul
+  centerLight.position.set(0, ylight, zlight + -zlight) // Posición de la luz (centro superior)
+  centerLight.target = tabletGroup // Apunta hacia el cubo
+  centerLight.castShadow = true // Habilitar sombras
+  scene.add(centerLight)
+
+  // Luz rosa desde la parte superior derecha
+  // const rightLight = new THREE.SpotLight(0xed0ca6, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Ángulo estrecho y suavizado
+  rightLight = new THREE.SpotLight(
+    colorWhite,
+    lightIntensity,
+    lightDistance,
+    lightAngle,
+    lightPenumbra,
+    lightDecay,
+  ) // Ángulo estrecho y suavizado
+  rightLight.position.set(xlight, ylight, zlight) // Posición de la luz (arriba a la derecha)
+  rightLight.target = tabletGroup // Apunta hacia el cubo
+  rightLight.castShadow = true // Habilitar sombras
+  scene.add(rightLight)
+
+  // Configurar la sombra de las luces
+  renderer.shadowMap.enabled = true // Habilitar mapas de sombras en el renderizador
+
+  // Hacer que el cubo pueda recibir sombras
+  tabletGroup.receiveShadow = true
+  tabletGroup.castShadow = true
+}
+/*****************************************************************************************
+ * FUNCTION: addPrincipalLights
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Adds general lighting to the 3D scene, including:
+ *              - AmbientLight for uniform base illumination.
+ *              - Two DirectionalLights simulating sunlight or daylight.
+ *              - A focused SpotLight directed at a specific point (fixed target).
+ *
+ *              These lights are intended to provide consistent and realistic lighting
+ *              across the entire scene and complement the SpotLights added elsewhere.
+ *
+ *              The fixed target helps direct the spotlight precisely onto the subject.
+ *****************************************************************************************
+ * DESCRIPCIÓN: Añade iluminación general a la escena 3D, incluyendo:
+ *              - Luz ambiental (AmbientLight) para una iluminación base uniforme.
+ *              - Dos luces direccionales (DirectionalLight) que simulan luz solar o natural.
+ *              - Una luz puntual (SpotLight) dirigida a un punto específico (target fijo).
+ *
+ *              Estas luces están diseñadas para proporcionar una iluminación constante
+ *              y realista a lo largo de toda la escena, complementando las luces superiores.
+ *
+ *              El objeto vacío como objetivo (fixed target) permite dirigir la luz
+ *              puntual con mayor precisión hacia el elemento deseado.
+ *****************************************************************************************/
+function addPrincipalLights() {
+  const colorLights = 0xffffff // White
+  const lightIntensity = 800
+  const lightDistance = 100
+  const lightAngle = Math.PI / 4 // Degrees
+  const lightPenumbra = 0.1 // Suavizado
+  const lightDecay = 0.8 // Decaimiento
+
+  // Illuminates the entire scene uniformly and without direction.
+  // Ilumina toda la escena de manera uniforme y sin dirección.
+  scene.add(new THREE.AmbientLight(colorLights, 0.4))
+
+  // Simulates sunlight or daylight. / Simula luz solar o del día.
+  const light = new THREE.DirectionalLight(colorLights, 50)
+  light.position.set(5, 10, 7)
+
+  // Simulates sunlight or daylight. / Simula luz solar o del día.
+  const directionalLight = new THREE.DirectionalLight(colorLights, 1)
+  directionalLight.position.set(10, 10, 10)
+
+  // Illuminates a specific area / Ilumina un área específica
+  const spotlight = new THREE.SpotLight(
+    colorLights,
+    lightIntensity,
+    lightDistance,
+    lightAngle,
+    lightPenumbra,
+    lightDecay,
+  )
+  spotlight.position.set(0, 20, 50)
+
+  // Create an empty object as a fixed point / Crear un objeto vacío como punto fijo
   const fixedTarget = new THREE.Object3D()
-  fixedTarget.position.set(0, 0, 0)
+  fixedTarget.position.set(2, 2, 0)
   scene.add(fixedTarget)
 
   spotlight.target = fixedTarget
@@ -273,29 +393,132 @@ function addLights() {
   scene.add(light)
 }
 /*****************************************************************************************
+ * FUNCTION: animateTabletRotation
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Animates the rotation of the tablet around its Y-axis based on elapsed time.
+ *              The rotation spans a full 360° turn (`2π` radians) over a given duration.
+ *              The interpolation is linear and clamps at the end of the duration.
+ *
+ * PARAMETERS:
+ *   - elapsedTime (Number): Total time passed since the animation started, in seconds.
+ *   - durationRotation (Number): Duration of the rotation phase, in seconds.
+ *****************************************************************************************
+ * DESCRIPCIÓN: Anima la rotación de la tablet alrededor de su eje Y en función
+ *              del tiempo transcurrido. La rotación abarca un giro completo de 360°
+ *              (`2π` radianes) durante la duración establecida.
+ *              La interpolación es lineal y se detiene al completar el tiempo.
+ *
+ * PARÁMETROS:
+ *   - elapsedTime (Número): Tiempo total transcurrido desde el inicio de la animación, en segundos.
+ *   - durationRotation (Número): Duración de la fase de rotación, en segundos.
+ *****************************************************************************************/
+function animateTabletRotation(elapsedTime, durationRotation) {
+  const t = Math.min(elapsedTime / durationRotation, 1)
+  // Medio giro (180°) en Y, interpolado
+  tabletGroup.rotation.y = Math.PI * 2 * t
+}
+/*****************************************************************************************
+ * FUNCTION: animateCameraZoom
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Animates the transition of the camera from a distant starting position and
+ *              field of view (FOV) to a closer final position and FOV.
+ *              This creates a zoom-in effect centered on the tablet over a fixed duration.
+ *
+ *              If the zoom delay has not yet elapsed, the function exits early.
+ *              Otherwise, it interpolates both camera position and FOV based on progress.
+ *              At the end of the animation, the camera is set exactly at the final state.
+ *              The camera is updated and set to look at the tablet at each frame.
+ *
+ * PARAMETERS:
+ *   - elapsedTime (Number): Time passed since the overall animation began, in seconds.
+ *   - delay (Number): Time offset that delays the start of the zoom animation.
+ *   - durationCameraZoom (Number): Duration of the zoom phase, in seconds.
+ *****************************************************************************************
+ * DESCRIPCIÓN: Anima la transición de la cámara desde una posición inicial lejana y un
+ *              campo de visión amplio (FOV), hacia una posición más cercana y un FOV reducido.
+ *              Esto genera un efecto de acercamiento centrado en la tablet durante un tiempo fijo.
+ *
+ *              Si aún no ha transcurrido el tiempo de espera (delay), la función no ejecuta nada.
+ *              En caso contrario, interpola la posición de la cámara y el FOV según el progreso.
+ *              Al finalizar, la cámara se ajusta exactamente al estado final.
+ *              En cada frame, se actualiza la matriz de proyección y se orienta la cámara
+ *              hacia la tablet.
+ *
+ * PARÁMETROS:
+ *   - elapsedTime (Número): Tiempo transcurrido desde el inicio general de la animación, en segundos.
+ *   - delay (Número): Tiempo de espera antes de comenzar la animación de zoom.
+ *   - durationCameraZoom (Número): Duración de la fase de acercamiento, en segundos.
+ *****************************************************************************************/
+function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
+  const cameraElapsedTime = elapsedTime - delay
+
+  if (cameraElapsedTime < 0) return
+
+  if (cameraElapsedTime < durationCameraZoom) {
+    const t = cameraElapsedTime / durationCameraZoom
+    camera.position.lerpVectors(startPos, endPos, t)
+    camera.fov = startFov + (endFov - startFov) * t
+  } else {
+    camera.position.copy(endPos)
+    camera.fov = endFov
+  }
+  camera.updateProjectionMatrix()
+  camera.lookAt(tabletGroup.position)
+}
+/*****************************************************************************************
  * FUNCTION: startAnimation
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Starts and continuously runs the animation loop for the 3D scene
- *              using `requestAnimationFrame`. This loop updates camera controls and
- *              renders the scene on every frame to achieve smooth real-time animation.
+ * DESCRIPTION: Starts and manages a two-phase animation sequence for the 3D scene using
+ *              `requestAnimationFrame`. The animation consists of:
+ *              - Phase 1: A smooth rotation of the tablet (180° on Y-axis) over a defined duration.
+ *              - Phase 2: A zoom-in camera animation that moves and adjusts the field of view
+ *                         to focus on the tablet.
+ *
+ *              The loop updates both the rotation and camera animation based on elapsed time,
+ *              rendering the scene at each frame to ensure smooth transitions.
+ *
  *              On each frame:
- *              - Requests the next animation frame.
- *              - Updates the OrbitControls to reflect user interactions.
- *              - Renders the scene from the current camera perspective.
- * *****************************************************************************************
- * DESCRIPCIÓN: Inicia y mantiene el bucle de animación para la escena 3D
- *              utilizando `requestAnimationFrame`. Este ciclo actualiza los controles
- *              de cámara y renderiza la escena en cada frame para lograr animación fluida.
+ *              - Calculates elapsed time since animation started.
+ *              - Performs tablet rotation if within the rotation phase.
+ *              - Starts and executes camera zoom once rotation is complete.
+ *              - Renders the updated scene from the camera’s perspective.
+ *              - Requests the next frame if total animation duration has not been exceeded.
+ *****************************************************************************************
+ * DESCRIPCIÓN: Inicia y gestiona una secuencia de animación en dos fases para la escena 3D
+ *              utilizando `requestAnimationFrame`. La animación consiste en:
+ *              - Fase 1: Una rotación suave de la tablet (180° en el eje Y) durante una duración definida.
+ *              - Fase 2: Una animación de zoom que mueve la cámara y ajusta el campo de visión
+ *                        para enfocar la tablet.
+ *
+ *              El bucle actualiza tanto la rotación como la animación de cámara en función del
+ *              tiempo transcurrido, renderizando la escena en cada fotograma para garantizar
+ *              transiciones suaves.
+ *
  *              En cada frame:
- *              - Solicita el siguiente frame de animación.
- *              - Actualiza los controles OrbitControls para reflejar interacciones.
- *              - Renderiza la escena desde la perspectiva actual de la cámara.
+ *              - Calcula el tiempo transcurrido desde el inicio de la animación.
+ *              - Ejecuta la rotación de la tablet si aún está dentro de la fase de rotación.
+ *              - Inicia y ejecuta el zoom de cámara una vez finalizada la rotación.
+ *              - Renderiza la escena actualizada desde la perspectiva de la cámara.
+ *              - Solicita el siguiente frame si la duración total de la animación no se ha cumplido.
  *****************************************************************************************/
-function startAnimation() {
-  animationId = requestAnimationFrame(startAnimation)
-  controls.update()
-  // tabletGroup.rotation.y += 0.005
+function startAnimation(time = 0) {
+  if (startTime === null) startTime = time
+
+  const durationRotation = 2.5 // segundos
+  const durationCameraZoom = 1.8 // segundos
+  const totalDuration = durationRotation + durationCameraZoom
+
+  const elapsedTime = (time - startTime) / 1000
+
+  animateTabletRotation(elapsedTime, durationRotation)
+  if (rotationStartedAt === null) rotationStartedAt = elapsedTime
+  animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom)
+
   renderer.render(scene, camera)
+
+  if (elapsedTime < totalDuration) {
+    requestAnimationFrame(startAnimation)
+  }
 }
 /*****************************************************************************************
  * FUNCTION: transitionTabletOn
@@ -383,53 +606,43 @@ function transitionTabletOn({ duration, screenMaterial, onComplete }) {
  * PARÁMETROS:
  *   - event: objeto KeyboardEvent que contiene la tecla presionada.
  *****************************************************************************************/
-async function handleKeyDown(event) {
-  try {
-    if (event.key === 'Enter') {
-      isScreenOn.value = !isScreenOn.value
-
-      if (isScreenOn.value) {
-        // Screen ON
-
-        const result = await renderScreenTexture()
-        const texture = result?.texture
-        const cleanup = result?.cleanup
-
-        if (texture) {
-          screenMaterial.map = texture
-          screenMaterial.color.setHex(0xffffff)
-          screenMaterial.transparent = true
-          screenMaterial.opacity = 0
-          screenMaterial.emissiveIntensity = 0
-          screenMaterial.needsUpdate = true
-
-          transitionTabletOn({
-            duration: 20,
-            screenMaterial,
-            onComplete: cleanup,
-          })
-        } else {
-          console.warn('Texture is null')
-        }
-        // Desactivar OrbitControls cuando el mouse interactúa con el HTML proyectado
-        controls.enabled = false
-      } else {
-        // Screen OFF
-
-        screenMaterial.map = null
-        screenMaterial.color.setHex(0x000000)
-        screenMaterial.emissiveIntensity = 0.3
-        screenMaterial.opacity = 0.7
-        screenMaterial.needsUpdate = true
-
-        // Activar OrbitControls
-        controls.enabled = true
-      }
-    }
-  } catch (error) {
-    console.error('Error in handleKeyDown:', error)
-  }
-}
+// async function handleKeyDown(event) {
+//   // try {
+//   //   if (event.key === 'Enter') {
+//   //     isScreenOn.value = !isScreenOn.value
+//   //     if (isScreenOn.value) {
+//   //       // Screen ON
+//   //       const result = await renderScreenTexture()
+//   //       const texture = result?.texture
+//   //       const cleanup = result?.cleanup
+//   //       if (texture) {
+//   //         screenMaterial.map = texture
+//   //         screenMaterial.color.setHex(0xffffff)
+//   //         screenMaterial.transparent = true
+//   //         screenMaterial.opacity = 0
+//   //         screenMaterial.emissiveIntensity = 0
+//   //         screenMaterial.needsUpdate = true
+//   //         transitionTabletOn({
+//   //           duration: 20,
+//   //           screenMaterial,
+//   //           onComplete: cleanup,
+//   //         })
+//   //       } else {
+//   //         console.warn('Texture is null')
+//   //       }
+//   //     } else {
+//   //       // Screen OFF
+//   //       screenMaterial.map = null
+//   //       screenMaterial.color.setHex(0x000000)
+//   //       screenMaterial.emissiveIntensity = 0.3
+//   //       screenMaterial.opacity = 0.7
+//   //       screenMaterial.needsUpdate = true
+//   //     }
+//   //   }
+//   // } catch (error) {
+//   //   console.error('Error in handleKeyDown:', error)
+//   // }
+// }
 /*****************************************************************************************
  * FUNCTION: renderScreenTexture (async)
  * AUTHOR: Muriel Vitale.
@@ -470,48 +683,48 @@ async function handleKeyDown(event) {
  *       - `cleanup`: función para limpiar recursos (desmontar componente y remover contenedor).
  *   - Retorna `null` en caso de error.
  *****************************************************************************************/
-async function renderScreenTexture() {
-  const dpi = 100
-  const container = document.createElement('div')
-  container.style.position = 'absolute'
-  container.style.left = '-9999px'
-  container.style.top = '-9999px'
-  container.style.width = `${screenWidth * dpi}px`
-  container.style.height = `${screenHeight * dpi}px`
-  document.body.appendChild(container)
+// async function renderScreenTexture() {
+//   const dpi = 100
+//   const container = document.createElement('div')
+//   container.style.position = 'absolute'
+//   container.style.left = '-9999px'
+//   container.style.top = '-9999px'
+//   container.style.width = `${screenWidth * dpi}px`
+//   container.style.height = `${screenHeight * dpi}px`
+//   document.body.appendChild(container)
 
-  // Create the app
-  const app = createApp(TabletContent)
-  const vm = app.mount(container)
+//   // Create the app
+//   const app = createApp(TabletContent)
+//   const vm = app.mount(container)
 
-  try {
-    await vm.domReady
-    const screenEl = vm.screen
+//   try {
+//     await vm.domReady
+//     const screenEl = vm.screen
 
-    const canvas = await html2canvas(screenEl, {
-      backgroundColor: null,
-      scale: 2,
-      width: container.clientWidth,
-      height: container.clientHeight,
-    })
+//     const canvas = await html2canvas(screenEl, {
+//       backgroundColor: null,
+//       scale: 2,
+//       width: container.clientWidth,
+//       height: container.clientHeight,
+//     })
 
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
+//     const texture = new THREE.CanvasTexture(canvas)
+//     texture.needsUpdate = true
 
-    return {
-      texture,
-      cleanup: () => {
-        app.unmount()
-        document.body.removeChild(container)
-      },
-    }
-  } catch (error) {
-    console.error('Error creating texture:', error)
-    app.unmount()
-    document.body.removeChild(container)
-    return null
-  }
-}
+//     return {
+//       texture,
+//       cleanup: () => {
+//         app.unmount()
+//         document.body.removeChild(container)
+//       },
+//     }
+//   } catch (error) {
+//     console.error('Error creating texture:', error)
+//     app.unmount()
+//     document.body.removeChild(container)
+//     return null
+//   }
+// }
 </script>
 
 <style scoped>
