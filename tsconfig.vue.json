@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.app.json",
+  "vueCompilerOptions": {
+    "globalComponents": ["./src/components/**/*.vue"]
+  }
+}

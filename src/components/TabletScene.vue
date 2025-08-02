@@ -101,10 +101,10 @@ let rotationStartedAt = null
  *****************************************************************************************/
 onMounted(() => {
   window.addEventListener('load', () => {
-    // setTimeout(() => {
-    isLoading.value = false
-    showPreloader.value = false
-    // }, 3000)
+    setTimeout(() => {
+      isLoading.value = false
+      showPreloader.value = false
+    }, 3000)
   })
 })
 /*****************************************************************************************
