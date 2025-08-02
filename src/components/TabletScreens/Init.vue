@@ -24,6 +24,7 @@ const emit = defineEmits(['change-screen'])
 const goTo = (route) => {
   console.log('Hiciste click en el boton')
   if (route == 'skills') {
+    console.log('skills')
     emit('change-screen', 'Skills')
   }
   if (route == 'experience') {
@@ -45,10 +46,6 @@ defineExpose({
 <style scoped>
 .initContent {
   pointer-events: auto;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 10;
   width: 100%;
   height: 100%;
   background-image: url('@/assets/wallpaperTablet.png');
@@ -59,12 +56,14 @@ defineExpose({
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
 }
 
 .clock-container {
-  width: 25rem;
+  width: 20rem;
   height: 10rem;
   background-color: rgba(253, 251, 251, 0.3);
+  box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.5);
   border-radius: 1rem;
   margin: 5rem auto 0 auto;
   display: flex;

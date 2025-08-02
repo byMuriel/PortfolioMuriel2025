@@ -1,4 +1,3 @@
-<!-- src/components/TabletScreen.vue -->
 <template>
   <div ref="screen" class="screen-content">
     <component :is="currentView" @change-screen="handleChangeScreen" />
@@ -32,16 +31,12 @@ defineExpose({
 
 <style scoped>
 .screen-content {
+  position: relative;
   width: 100%;
   height: 100%;
   background-color: white;
-  /* background-image: url(../assets/wallpaperTablet.png);
-  background-size: cover;
-  background-position: center; */
-  /* display: flex;
+  overflow: hidden;
+  display: flex;
   flex-direction: column;
-  justify-content: start;
-  align-items: center;
-  font-family: sans-serif; */
 }
 </style>

@@ -1,6 +1,32 @@
 <!-- src/components/TabletScene.vue -->
 <template>
-  <div ref="container" class="containerPrincipal" style="width: 100%; height: 100vh"></div>
+  <!-- Preloader -->
+  <transition name="preloader-fade" @after-leave="onPreloaderLeave">
+    <div v-if="showPreloader" class="preloader">
+      <div class="preloader-inner" :class="{ 'fade-out-dots': !isLoading }">
+        <div class="dot-loader">
+          <span class="dot dot1"></span>
+          <span class="dot dot2"></span>
+          <span class="dot dot3"></span>
+          <span class="dot dot4"></span>
+          <span class="dot dot5"></span>
+          <span class="dot dot6"></span>
+          <span class="dot dot7"></span>
+        </div>
+        <p class="loading-text">CARGANDO...</p>
+      </div>
+    </div>
+  </transition>
+  <!-- Scene -->
+  <div ref="container" class="containerPrincipal" style="width: 100%; height: 100vh">
+    <div v-if="!showPreloader && startContainer" class="start-screen">
+      <div @click="start" class="startButton">LET'S GO</div>
+    </div>
+  </div>
+
+  <div id="screen-overlay" class="overlay">
+    <TabletContent v-if="showTabletContent" />
+  </div>
 </template>
 
 <script setup>
@@ -11,11 +37,19 @@ import TabletContent from './TabletContent.vue'
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import html2canvas from 'html2canvas'
 
+const isLoading = ref(true)
+const showPreloader = ref(true)
+const startContainer = ref(true)
 const container = ref(null)
 const isScreenOn = ref(false)
+const showTabletContent = ref(false)
+const screenPosition = ref({ x: 0, y: 0 })
+const screenSize = ref({ width: 0, height: 0 })
 
 let renderer, scene, camera, animationId
 let screenMaterial
+let screen = null
+let overlayShown = false
 const tabletGroup = new THREE.Group()
 
 // Dimensions and properties of the tablet / Dimensiones y propiedades de la tablet
@@ -66,12 +100,12 @@ let rotationStartedAt = null
  *                usando `handleKeyDown`.
  *****************************************************************************************/
 onMounted(() => {
-  initScene()
-  createTablet()
-  addTopSpotLights()
-  addPrincipalLights()
-  renderer.render(scene, camera)
-  startAnimation()
+  window.addEventListener('load', () => {
+    // setTimeout(() => {
+    isLoading.value = false
+    showPreloader.value = false
+    // }, 3000)
+  })
 })
 /*****************************************************************************************
    * LIFECYCLE HOOK: onBeforeUnmount
@@ -84,7 +118,7 @@ onMounted(() => {
    *              - Removes the WebGL canvas from the DOM if it exists.
    * ***************************************************************************************
    * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
-   *              sea destruido. Se encarga de limpiar correctamente todos los recursos y 
+   *              sea destruido. Se encarga de limpiar correctamente todos los recursos y
    *              listeners asociados a la escena 3D:
    *              - Elimina el listener global del teclado (`keydown`).
    *              - Cancela el bucle de animación con `cancelAnimationFrame`.
@@ -122,6 +156,87 @@ onBeforeUnmount(() => {
  *              - Configura un fondo de color para la escena.
  *              - Añade controles orbitales para navegar la escena (sin zoom ni paneo).
  *****************************************************************************************/
+function onPreloaderLeave() {
+  showPreloader.value = false
+}
+function start() {
+  startContainer.value = false
+  startTime = null
+  rotationStartedAt = null
+
+  initScene()
+  createTablet()
+  addTopSpotLights()
+  addPrincipalLights()
+  renderer.render(scene, camera)
+  requestAnimationFrame(startAnimation)
+}
+function clickHere() {
+  console.log('click here')
+  showTabletContent.value = true
+}
+function updateOverlayPosition() {
+  console.log('updateOverlayPosition')
+  if (!screen) return
+
+  const vector = new THREE.Vector3()
+  vector.setFromMatrixPosition(screen.matrixWorld)
+  vector.project(camera)
+
+  const widthHalf = renderer.domElement.clientWidth / 2
+  const heightHalf = renderer.domElement.clientHeight / 2
+
+  // Puntos extremos en el espacio local del mesh
+  const center = new THREE.Vector3(0, 0, 0)
+  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
+  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
+
+  // Convertir a coordenadas mundiales
+  screen.updateMatrixWorld()
+  center.applyMatrix4(screen.matrixWorld)
+  topLeft.applyMatrix4(screen.matrixWorld)
+  bottomRight.applyMatrix4(screen.matrixWorld)
+
+  // Proyectar al espacio de pantalla
+  center.project(camera)
+  topLeft.project(camera)
+  bottomRight.project(camera)
+
+  const centerX = center.x * widthHalf + widthHalf
+  const centerY = -center.y * heightHalf + heightHalf
+
+  const x1 = topLeft.x * widthHalf + widthHalf
+  const y1 = -topLeft.y * heightHalf + heightHalf
+
+  const x2 = bottomRight.x * widthHalf + widthHalf
+  const y2 = -bottomRight.y * heightHalf + heightHalf
+
+  const pixelWidth = Math.abs(x2 - x1) - 5
+  const pixelHeight = Math.abs(y2 - y1) - 5
+
+  const overlay = document.getElementById('screen-overlay')
+  if (overlay) {
+    overlay.style.left = `${centerX}px`
+    overlay.style.top = `${centerY}px`
+    overlay.style.width = `${pixelWidth}px`
+    overlay.style.height = `${pixelHeight}px`
+    overlay.style.transform = 'translate(-50%, -50%)'
+  }
+
+  // if (screenWidth <= 480) {
+  //   xValue = canvasRect.width / 2 - 3.5
+  // } else if (screenWidth <= 768) {
+  //   xValue = canvasRect.width / 2 - 5
+  // } else if (screenWidth <= 1024) {
+  //   xValue = canvasRect.width / 2 - 10
+  // } else {
+  //   xValue = canvasRect.width / 2 - 17
+  // }
+}
+function handleClick() {
+  console.log('¡Botón presionado!')
+  // Aquí puedes emitir eventos, cambiar vistas, cargar componentes, etc.
+}
 function initScene() {
   // Create scene / Crear escena
   const width = window.innerWidth
@@ -153,7 +268,11 @@ function initScene() {
    *              - Back cover with rounded geometry.
    *              - Recessed screen with a configurable material (`screenMaterial`).
    *              - Reference object (target) for spotlight-type lighting.
+<<<<<<< HEAD
    *              
+=======
+   *
+>>>>>>> 625434f (Add preload, 'Let's Go' button, and configuration for home screen and active routes.)
    *              The complete group (`tabletGroup`) is added to the main scene (`scene`).
    *              Uses rounded geometries (`RoundedBoxGeometry`) and PBR materials.
    * *****************************************************************************************
@@ -163,7 +282,11 @@ function initScene() {
    *              - Tapa trasera con geometría redondeada.
    *              - Pantalla hundida con material configurable (screenMaterial).
    *              - Objeto de referencia (target) para iluminación tipo spotlight.
+<<<<<<< HEAD
    *              
+=======
+   *
+>>>>>>> 625434f (Add preload, 'Let's Go' button, and configuration for home screen and active routes.)
    *              El grupo completo (`tabletGroup`) se agrega a la escena principal (`scene`).
    *              Utiliza geometrías redondeadas (RoundedBoxGeometry) y materiales PBR.
 
@@ -220,7 +343,7 @@ function createTablet() {
     transparent: true,
     opacity: 0.7,
   })
-  const screen = new THREE.Mesh(screenGeometry, screenMaterial)
+  screen = new THREE.Mesh(screenGeometry, screenMaterial)
   screen.position.z = 0.01 // slightly sunken / ligeramente hundida
   tabletGroup.add(screen)
 
@@ -501,23 +624,35 @@ function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
  *              - Renderiza la escena actualizada desde la perspectiva de la cámara.
  *              - Solicita el siguiente frame si la duración total de la animación no se ha cumplido.
  *****************************************************************************************/
-function startAnimation(time = 0) {
+function startAnimation(time) {
   if (startTime === null) startTime = time
 
-  const durationRotation = 2.5 // segundos
-  const durationCameraZoom = 1.8 // segundos
-  const totalDuration = durationRotation + durationCameraZoom
-
   const elapsedTime = (time - startTime) / 1000
+  const durationRotation = 2.5
+  const durationCameraZoom = 1.8
+  const totalDuration = durationRotation + durationCameraZoom
+  const recorteTiempoParaMostrarLaPantalla = 1.7
 
   animateTabletRotation(elapsedTime, durationRotation)
+
   if (rotationStartedAt === null) rotationStartedAt = elapsedTime
   animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom)
 
   renderer.render(scene, camera)
 
+  if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
+    console.log('totalDuration - 0.5')
+    updateOverlayPosition()
+    showTabletContent.value = true
+    overlayShown = true
+  }
+
   if (elapsedTime < totalDuration) {
     requestAnimationFrame(startAnimation)
+  } else {
+    console.log('finalizo')
+    // updateOverlayPosition()
+    // showTabletContent.value = true
   }
 }
 /*****************************************************************************************
@@ -727,7 +862,22 @@ function transitionTabletOn({ duration, screenMaterial, onComplete }) {
 // }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/colors' as *;
+
+.preloader-fade-enter-active,
+.preloader-fade-leave-active {
+  transition:
+    opacity 1.2s ease,
+    transform 1.2s ease;
+}
+
+.preloader-fade-enter-from,
+.preloader-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
 .containerPrincipal {
   width: 100%;
   height: 100vh;
@@ -737,11 +887,191 @@ function transitionTabletOn({ duration, screenMaterial, onComplete }) {
   overflow: hidden;
 }
 
+.start-screen {
+  height: 100vh; /* Asegura altura completa para el centrado vertical */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.startButton {
+  position: relative;
+  color: $brilliantBlue;
+  width: fit-content;
+  height: fit-content;
+  margin: auto;
+  padding: auto;
+  font-family:
+    'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  font-size: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease;
+  animation: pulseStartButton 1.5s ease-in-out infinite;
+}
+
+.startButton:hover {
+  transform: scale(1.05);
+}
+
 canvas {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
-  pointer-events: none; /* ya lo hicimos antes */
+  pointer-events: none;
+}
+
+.preloader {
+  position: absolute;
+  inset: 0;
+  background: $GreyBlue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-family: sans-serif;
+  transition: background-color 0.4s ease;
+}
+
+.loading-text {
+  font-family:
+    'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  font-size: 1rem;
+  color: $brilliantBlue;
+  animation: pulseLoading 1.5s ease-in-out infinite;
+}
+
+.preloader-inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dot-loader {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.dot {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  animation: bounce 1.2s infinite ease-in-out alternate;
+  position: relative;
+}
+
+.dot1 {
+  animation-delay: 0.2s;
+}
+.dot2 {
+  animation-delay: 0.4s;
+}
+.dot3 {
+  animation-delay: 0.6s;
+}
+.dot4 {
+  animation-delay: 0.67s;
+}
+.dot5 {
+  animation-delay: 0.6s;
+}
+.dot6 {
+  animation-delay: 0.4s;
+}
+.dot7 {
+  animation-delay: 0.2s;
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+    background-color: $lightViolet;
+  }
+  50% {
+    transform: translateY(-2.5rem);
+    background-color: $brilliantMagenta;
+  }
+  100% {
+    transform: translateY(0);
+    background-color: $lightViolet;
+  }
+}
+
+@keyframes pulseLoading {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulseStartButton {
+  0%,
+  100% {
+    color: $lightViolet;
+  }
+  50% {
+    color: $brilliantMagenta;
+  }
+}
+
+.fade-out-dots .dot {
+  animation: none !important;
+  opacity: 0;
+  transition: opacity 5s ease;
+}
+.fade-out-dots .dot1 {
+  transition-delay: 0s;
+}
+.fade-out-dots .dot2 {
+  transition-delay: 0.1s;
+}
+.fade-out-dots .dot3 {
+  transition-delay: 0.2s;
+}
+.fade-out-dots .dot4 {
+  transition-delay: 3s;
+}
+.fade-out-dots .dot5 {
+  transition-delay: 0.2s;
+}
+.fade-out-dots .dot6 {
+  transition-delay: 0.1s;
+}
+.fade-out-dots .dot7 {
+  transition-delay: 0s;
+}
+
+#webgl-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  z-index: 10;
+  width: 300px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
 }
 </style>
