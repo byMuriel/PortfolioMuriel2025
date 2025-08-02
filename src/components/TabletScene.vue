@@ -34,17 +34,12 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { ref, onMounted, onBeforeUnmount, createApp } from 'vue'
 import TabletContent from './TabletContent.vue'
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-// import html2canvas from 'html2canvas'
 
 const isLoading = ref(true)
 const showPreloader = ref(true)
 const startContainer = ref(true)
 const container = ref(null)
-const isScreenOn = ref(false)
 const showTabletContent = ref(false)
-const screenPosition = ref({ x: 0, y: 0 })
-const screenSize = ref({ width: 0, height: 0 })
 
 let renderer, scene, camera, animationId
 let screenMaterial
@@ -104,7 +99,7 @@ onMounted(() => {
     setTimeout(() => {
       isLoading.value = false
       showPreloader.value = false
-    }, 3000)
+    }, 500)
   })
 })
 /*****************************************************************************************
@@ -134,6 +129,22 @@ onBeforeUnmount(() => {
     container.value.removeChild(renderer.domElement)
   }
 })
+function onPreloaderLeave() {
+  showPreloader.value = false
+}
+function start() {
+  startContainer.value = false
+  startTime = null
+  rotationStartedAt = null
+
+  initScene()
+  createRoomEnvironment()
+  createTablet()
+  addTopSpotLights()
+  addPrincipalLights()
+  renderer.render(scene, camera)
+  requestAnimationFrame(startAnimation)
+}
 /*****************************************************************************************
  * FUNCTION: initScene
  * AUTHOR: Muriel Vitale.
@@ -156,87 +167,6 @@ onBeforeUnmount(() => {
  *              - Configura un fondo de color para la escena.
  *              - Añade controles orbitales para navegar la escena (sin zoom ni paneo).
  *****************************************************************************************/
-function onPreloaderLeave() {
-  showPreloader.value = false
-}
-function start() {
-  startContainer.value = false
-  startTime = null
-  rotationStartedAt = null
-
-  initScene()
-  createTablet()
-  addTopSpotLights()
-  addPrincipalLights()
-  renderer.render(scene, camera)
-  requestAnimationFrame(startAnimation)
-}
-function clickHere() {
-  console.log('click here')
-  showTabletContent.value = true
-}
-function updateOverlayPosition() {
-  console.log('updateOverlayPosition')
-  if (!screen) return
-
-  const vector = new THREE.Vector3()
-  vector.setFromMatrixPosition(screen.matrixWorld)
-  vector.project(camera)
-
-  const widthHalf = renderer.domElement.clientWidth / 2
-  const heightHalf = renderer.domElement.clientHeight / 2
-
-  // Puntos extremos en el espacio local del mesh
-  const center = new THREE.Vector3(0, 0, 0)
-  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
-  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
-
-  // Convertir a coordenadas mundiales
-  screen.updateMatrixWorld()
-  center.applyMatrix4(screen.matrixWorld)
-  topLeft.applyMatrix4(screen.matrixWorld)
-  bottomRight.applyMatrix4(screen.matrixWorld)
-
-  // Proyectar al espacio de pantalla
-  center.project(camera)
-  topLeft.project(camera)
-  bottomRight.project(camera)
-
-  const centerX = center.x * widthHalf + widthHalf
-  const centerY = -center.y * heightHalf + heightHalf
-
-  const x1 = topLeft.x * widthHalf + widthHalf
-  const y1 = -topLeft.y * heightHalf + heightHalf
-
-  const x2 = bottomRight.x * widthHalf + widthHalf
-  const y2 = -bottomRight.y * heightHalf + heightHalf
-
-  const pixelWidth = Math.abs(x2 - x1) - 5
-  const pixelHeight = Math.abs(y2 - y1) - 5
-
-  const overlay = document.getElementById('screen-overlay')
-  if (overlay) {
-    overlay.style.left = `${centerX}px`
-    overlay.style.top = `${centerY}px`
-    overlay.style.width = `${pixelWidth}px`
-    overlay.style.height = `${pixelHeight}px`
-    overlay.style.transform = 'translate(-50%, -50%)'
-  }
-
-  // if (screenWidth <= 480) {
-  //   xValue = canvasRect.width / 2 - 3.5
-  // } else if (screenWidth <= 768) {
-  //   xValue = canvasRect.width / 2 - 5
-  // } else if (screenWidth <= 1024) {
-  //   xValue = canvasRect.width / 2 - 10
-  // } else {
-  //   xValue = canvasRect.width / 2 - 17
-  // }
-}
-function handleClick() {
-  console.log('¡Botón presionado!')
-  // Aquí puedes emitir eventos, cambiar vistas, cargar componentes, etc.
-}
 function initScene() {
   // Create scene / Crear escena
   const width = window.innerWidth
@@ -259,6 +189,42 @@ function initScene() {
   renderer.setClearColor(colorFondo)
   container.value.appendChild(renderer.domElement)
 }
+function createRoomEnvironment() {
+  const roomSize = 100
+  const wallHeight = 100
+
+  const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize)
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x126cfc }) // 0x5043d9 }) // 0x6116c4 }) //
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.y = -7
+  scene.add(floor)
+
+  const backWall = new THREE.Mesh(
+    new THREE.PlaneGeometry(roomSize, wallHeight),
+    new THREE.MeshStandardMaterial({ color: 0x126cfc }), //0x5043d9 }), //  0x6116c4 }),
+  )
+  backWall.position.set(0, wallHeight / 2 - 7, -roomSize / 2)
+  scene.add(backWall)
+
+  const frontWall = backWall.clone()
+  frontWall.rotation.y = Math.PI
+  frontWall.position.z = roomSize / 2
+  scene.add(frontWall)
+
+  const rightWall = new THREE.Mesh(
+    new THREE.PlaneGeometry(roomSize, wallHeight),
+    new THREE.MeshStandardMaterial({ color: 0x126cfc }), // 0x5043d9 }), //  0x6116c4 }),
+  )
+  rightWall.rotation.y = -Math.PI / 2
+  rightWall.position.set(roomSize / 2, wallHeight / 2 - 7, 0)
+  scene.add(rightWall)
+
+  const leftWall = rightWall.clone()
+  leftWall.position.x = -roomSize / 2
+  leftWall.rotation.y = Math.PI / 2 // 👈 cambia la rotación para que mire hacia dentro
+  scene.add(leftWall)
+}
 /*****************************************************************************************
    * FUNCTION: createTablet
    * AUTHOR: Muriel Vitale.
@@ -268,11 +234,7 @@ function initScene() {
    *              - Back cover with rounded geometry.
    *              - Recessed screen with a configurable material (`screenMaterial`).
    *              - Reference object (target) for spotlight-type lighting.
-<<<<<<< HEAD
-   *              
-=======
    *
->>>>>>> 625434f (Add preload, 'Let's Go' button, and configuration for home screen and active routes.)
    *              The complete group (`tabletGroup`) is added to the main scene (`scene`).
    *              Uses rounded geometries (`RoundedBoxGeometry`) and PBR materials.
    * *****************************************************************************************
@@ -282,11 +244,7 @@ function initScene() {
    *              - Tapa trasera con geometría redondeada.
    *              - Pantalla hundida con material configurable (screenMaterial).
    *              - Objeto de referencia (target) para iluminación tipo spotlight.
-<<<<<<< HEAD
-   *              
-=======
    *
->>>>>>> 625434f (Add preload, 'Let's Go' button, and configuration for home screen and active routes.)
    *              El grupo completo (`tabletGroup`) se agrega a la escena principal (`scene`).
    *              Utiliza geometrías redondeadas (RoundedBoxGeometry) y materiales PBR.
 
@@ -397,8 +355,6 @@ function addTopSpotLights() {
   const lightPenumbra = 1 // 0.2 // Suavizado de la luz
   const lightDecay = 1 // Decaimiento de la luz
 
-  // Luz amarilla desde la parte superior izquierda
-  // const leftLight = new THREE.SpotLight(0xffc003, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Color amarillo
   leftLight = new THREE.SpotLight(
     colorWhite,
     lightIntensity,
@@ -406,14 +362,12 @@ function addTopSpotLights() {
     lightAngle,
     lightPenumbra,
     lightDecay,
-  ) // Color amarillo
+  )
   leftLight.position.set(-xlight, 45, zlight) // Posición de la luz (arriba a la izquierda)
   leftLight.target = tabletGroup // Apunta hacia el cubo
   leftLight.castShadow = true // Habilitar sombras
   scene.add(leftLight)
 
-  // Luz azul desde el centro superior
-  // const centerLight = new THREE.SpotLight(0x1accd9, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Color azul
   centerLight = new THREE.SpotLight(
     colorWhite,
     lightIntensity,
@@ -421,14 +375,12 @@ function addTopSpotLights() {
     lightAngle,
     lightPenumbra,
     lightDecay,
-  ) // Color azul
+  )
   centerLight.position.set(0, ylight, zlight + -zlight) // Posición de la luz (centro superior)
   centerLight.target = tabletGroup // Apunta hacia el cubo
   centerLight.castShadow = true // Habilitar sombras
   scene.add(centerLight)
 
-  // Luz rosa desde la parte superior derecha
-  // const rightLight = new THREE.SpotLight(0xed0ca6, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay); // Ángulo estrecho y suavizado
   rightLight = new THREE.SpotLight(
     colorWhite,
     lightIntensity,
@@ -436,7 +388,7 @@ function addTopSpotLights() {
     lightAngle,
     lightPenumbra,
     lightDecay,
-  ) // Ángulo estrecho y suavizado
+  )
   rightLight.position.set(xlight, ylight, zlight) // Posición de la luz (arriba a la derecha)
   rightLight.target = tabletGroup // Apunta hacia el cubo
   rightLight.castShadow = true // Habilitar sombras
@@ -486,8 +438,8 @@ function addPrincipalLights() {
   scene.add(new THREE.AmbientLight(colorLights, 0.4))
 
   // Simulates sunlight or daylight. / Simula luz solar o del día.
-  const light = new THREE.DirectionalLight(colorLights, 50)
-  light.position.set(5, 10, 7)
+  // const light = new THREE.DirectionalLight(colorLights, 50)
+  // light.position.set(5, 10, 7)
 
   // Simulates sunlight or daylight. / Simula luz solar o del día.
   const directionalLight = new THREE.DirectionalLight(colorLights, 1)
@@ -513,7 +465,7 @@ function addPrincipalLights() {
   scene.add(spotlight)
   scene.add(spotlight.target)
   scene.add(directionalLight)
-  scene.add(light)
+  // scene.add(light)
 }
 /*****************************************************************************************
  * FUNCTION: animateTabletRotation
@@ -588,6 +540,64 @@ function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
   camera.updateProjectionMatrix()
   camera.lookAt(tabletGroup.position)
 }
+function updateOverlayPosition() {
+  console.log('updateOverlayPosition')
+  if (!screen) return
+
+  const vector = new THREE.Vector3()
+  vector.setFromMatrixPosition(screen.matrixWorld)
+  vector.project(camera)
+
+  const widthHalf = renderer.domElement.clientWidth / 2
+  const heightHalf = renderer.domElement.clientHeight / 2
+
+  // Puntos extremos en el espacio local del mesh
+  const center = new THREE.Vector3(0, 0, 0)
+  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
+  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
+
+  // Convertir a coordenadas mundiales
+  screen.updateMatrixWorld()
+  center.applyMatrix4(screen.matrixWorld)
+  topLeft.applyMatrix4(screen.matrixWorld)
+  bottomRight.applyMatrix4(screen.matrixWorld)
+
+  // Proyectar al espacio de pantalla
+  center.project(camera)
+  topLeft.project(camera)
+  bottomRight.project(camera)
+
+  const centerX = center.x * widthHalf + widthHalf
+  const centerY = -center.y * heightHalf + heightHalf
+
+  const x1 = topLeft.x * widthHalf + widthHalf
+  const y1 = -topLeft.y * heightHalf + heightHalf
+
+  const x2 = bottomRight.x * widthHalf + widthHalf
+  const y2 = -bottomRight.y * heightHalf + heightHalf
+
+  const pixelWidth = Math.abs(x2 - x1) - 5
+  const pixelHeight = Math.abs(y2 - y1) - 5
+
+  const overlay = document.getElementById('screen-overlay')
+  if (overlay) {
+    overlay.style.left = `${centerX}px`
+    overlay.style.top = `${centerY}px`
+    overlay.style.width = `${pixelWidth}px`
+    overlay.style.height = `${pixelHeight}px`
+    overlay.style.transform = 'translate(-50%, -50%)'
+  }
+
+  // if (screenWidth <= 480) {
+  //   xValue = canvasRect.width / 2 - 3.5
+  // } else if (screenWidth <= 768) {
+  //   xValue = canvasRect.width / 2 - 5
+  // } else if (screenWidth <= 1024) {
+  //   xValue = canvasRect.width / 2 - 10
+  // } else {
+  //   xValue = canvasRect.width / 2 - 17
+  // }
+}
 /*****************************************************************************************
  * FUNCTION: startAnimation
  * AUTHOR: Muriel Vitale.
@@ -651,8 +661,6 @@ function startAnimation(time) {
     requestAnimationFrame(startAnimation)
   } else {
     console.log('finalizo')
-    // updateOverlayPosition()
-    // showTabletContent.value = true
   }
 }
 /*****************************************************************************************
@@ -708,158 +716,6 @@ function transitionTabletOn({ duration, screenMaterial, onComplete }) {
   }
   requestAnimationFrame(step)
 }
-/*****************************************************************************************
- * FUNCTION: handleKeyDown (async)
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles the keyboard event when the user presses a key.
- *              Specifically, when the `Enter` key is pressed, it toggles the screen's
- *              on/off state (simulated using a Three.js material).
- *
- *              - If the screen is off and Enter is pressed:
- *                  - The `TabletContent` component is rendered as a texture using html2canvas.
- *                  - The texture is assigned to the screen material.
- *                  - Material properties such as color, opacity, and emissiveness are updated.
- *
- *              - If the screen is on and Enter is pressed again:
- *                  - The texture is cleared and material properties are adjusted
- *                    to simulate a turned-off screen.
- *
- * PARAMETERS:
- *   - event: KeyboardEvent object containing the pressed key.
- * *****************************************************************************************
- * DESCRIPCIÓN: Maneja el evento de teclado cuando el usuario presiona una tecla.
- *              En particular, al presionar `Enter`, alterna el estado de encendido/apagado
- *              de la pantalla (simulado por un material en Three.js).
- *
- *              - Si la pantalla está apagada y se presiona Enter:
- *                  - Se renderiza el componente `TabletContent` como textura usando html2canvas.
- *                  - Se asigna la textura al material de la pantalla.
- *                  - Se ajustan propiedades del material como color, opacidad y emisividad.
- *
- *              - Si la pantalla está encendida y se presiona Enter nuevamente:
- *                  - Se limpian las texturas y se aplican estilos que simulan una pantalla apagada.
- * PARÁMETROS:
- *   - event: objeto KeyboardEvent que contiene la tecla presionada.
- *****************************************************************************************/
-// async function handleKeyDown(event) {
-//   // try {
-//   //   if (event.key === 'Enter') {
-//   //     isScreenOn.value = !isScreenOn.value
-//   //     if (isScreenOn.value) {
-//   //       // Screen ON
-//   //       const result = await renderScreenTexture()
-//   //       const texture = result?.texture
-//   //       const cleanup = result?.cleanup
-//   //       if (texture) {
-//   //         screenMaterial.map = texture
-//   //         screenMaterial.color.setHex(0xffffff)
-//   //         screenMaterial.transparent = true
-//   //         screenMaterial.opacity = 0
-//   //         screenMaterial.emissiveIntensity = 0
-//   //         screenMaterial.needsUpdate = true
-//   //         transitionTabletOn({
-//   //           duration: 20,
-//   //           screenMaterial,
-//   //           onComplete: cleanup,
-//   //         })
-//   //       } else {
-//   //         console.warn('Texture is null')
-//   //       }
-//   //     } else {
-//   //       // Screen OFF
-//   //       screenMaterial.map = null
-//   //       screenMaterial.color.setHex(0x000000)
-//   //       screenMaterial.emissiveIntensity = 0.3
-//   //       screenMaterial.opacity = 0.7
-//   //       screenMaterial.needsUpdate = true
-//   //     }
-//   //   }
-//   // } catch (error) {
-//   //   console.error('Error in handleKeyDown:', error)
-//   // }
-// }
-/*****************************************************************************************
- * FUNCTION: renderScreenTexture (async)
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Renders a Vue component (`TabletContent`) as a Three.js texture.
- *              The process includes:
- *                - Dynamically creating a hidden HTML container off-screen.
- *                - Mounting the `TabletContent` component inside that container.
- *                - Waiting for the component to be ready (`domReady` promise).
- *                - Using `html2canvas` to capture the rendered content into a canvas.
- *                - Converting the canvas into a Three.js `CanvasTexture`.
- *                - Returning an object with the texture and a `cleanup` function to unmount
- *                  the component and remove the container from the DOM.
- *
- * PARAMETERS:
- *   - No explicit parameters, but uses `screenWidth` and `screenHeight` from the outer scope.
- *
- * RETURNS:
- *   - An object with the following properties:
- *       - `texture`: a Three.js texture generated from the canvas.
- *       - `cleanup`: a function to free resources (unmount component and remove container).
- *   - Returns `null` in case of an error.
- * ***************************************************************************************
- * DESCRIPCIÓN: Renderiza un componente Vue (`TabletContent`) como una textura de Three.js.
- *              Para ello:
- *                - Crea dinámicamente un contenedor HTML oculto fuera de la vista.
- *                - Monta el componente `TabletContent` en dicho contenedor.
- *                - Espera a que el componente esté listo (promesa `domReady`).
- *                - Usa `html2canvas` para capturar el contenido renderizado como un canvas.
- *                - Convierte el canvas en una textura de Three.js (`CanvasTexture`).
- *                - Retorna un objeto con la textura y una función `cleanup` para desmontar
- *                  el componente y eliminar el contenedor del DOM.
- * PARÁMETROS:
- *   - No recibe parámetros explícitos, pero utiliza `screenWidth` y `screenHeight` definidos
- *     en ámbito.
- * RETORNO:
- *   - Objeto con propiedades:
- *       - `texture`: textura Three.js generada a partir del canvas.
- *       - `cleanup`: función para limpiar recursos (desmontar componente y remover contenedor).
- *   - Retorna `null` en caso de error.
- *****************************************************************************************/
-// async function renderScreenTexture() {
-//   const dpi = 100
-//   const container = document.createElement('div')
-//   container.style.position = 'absolute'
-//   container.style.left = '-9999px'
-//   container.style.top = '-9999px'
-//   container.style.width = `${screenWidth * dpi}px`
-//   container.style.height = `${screenHeight * dpi}px`
-//   document.body.appendChild(container)
-
-//   // Create the app
-//   const app = createApp(TabletContent)
-//   const vm = app.mount(container)
-
-//   try {
-//     await vm.domReady
-//     const screenEl = vm.screen
-
-//     const canvas = await html2canvas(screenEl, {
-//       backgroundColor: null,
-//       scale: 2,
-//       width: container.clientWidth,
-//       height: container.clientHeight,
-//     })
-
-//     const texture = new THREE.CanvasTexture(canvas)
-//     texture.needsUpdate = true
-
-//     return {
-//       texture,
-//       cleanup: () => {
-//         app.unmount()
-//         document.body.removeChild(container)
-//       },
-//     }
-//   } catch (error) {
-//     console.error('Error creating texture:', error)
-//     app.unmount()
-//     document.body.removeChild(container)
-//     return null
-//   }
-// }
 </script>
 
 <style scoped lang="scss">
