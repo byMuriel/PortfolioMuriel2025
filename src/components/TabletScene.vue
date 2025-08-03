@@ -17,6 +17,7 @@
       </div>
     </div>
   </transition>
+
   <!-- Scene -->
   <div ref="container" class="containerPrincipal" style="width: 100%; height: 100vh">
     <div v-if="!showPreloader && startContainer" class="start-screen">
@@ -24,7 +25,8 @@
     </div>
   </div>
 
-  <div id="screen-overlay" class="overlay">
+  <!-- Tablet Screen -->
+  <div id="screen-overlay" class="overlay" :class="{ 'fade-in-screen': showTabletContent }">
     <TabletContent v-if="showTabletContent" />
   </div>
 </template>
@@ -34,6 +36,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { ref, onMounted, onBeforeUnmount, createApp } from 'vue'
 import TabletContent from './TabletContent.vue'
+import skyTexture from '@/assets/textures/sky.png'
 
 const isLoading = ref(true)
 const showPreloader = ref(true)
@@ -141,7 +144,7 @@ function start() {
   createRoomEnvironment()
   createTablet()
   addTopSpotLights()
-  addPrincipalLights()
+  /* addPrincipalLights() */
   renderer.render(scene, camera)
   requestAnimationFrame(startAnimation)
 }
@@ -192,9 +195,10 @@ function initScene() {
 function createRoomEnvironment() {
   const roomSize = 100
   const wallHeight = 100
+  const colorRoom = 0x126cfc //azul  0x6f25f7 // morado 0x25e2f7 // cian
 
   const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize)
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x126cfc }) // 0x5043d9 }) // 0x6116c4 }) //
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: colorRoom }) // 0x5043d9 }) // 0x6116c4 }) //
   const floor = new THREE.Mesh(floorGeometry, floorMaterial)
   floor.rotation.x = -Math.PI / 2
   floor.position.y = -7
@@ -202,7 +206,7 @@ function createRoomEnvironment() {
 
   const backWall = new THREE.Mesh(
     new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: 0x126cfc }), //0x5043d9 }), //  0x6116c4 }),
+    new THREE.MeshStandardMaterial({ color: colorRoom }), //0x5043d9 }), //  0x6116c4 }),
   )
   backWall.position.set(0, wallHeight / 2 - 7, -roomSize / 2)
   scene.add(backWall)
@@ -214,7 +218,7 @@ function createRoomEnvironment() {
 
   const rightWall = new THREE.Mesh(
     new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: 0x126cfc }), // 0x5043d9 }), //  0x6116c4 }),
+    new THREE.MeshStandardMaterial({ color: colorRoom }), // 0x5043d9 }), //  0x6116c4 }),
   )
   rightWall.rotation.y = -Math.PI / 2
   rightWall.position.set(roomSize / 2, wallHeight / 2 - 7, 0)
@@ -222,7 +226,7 @@ function createRoomEnvironment() {
 
   const leftWall = rightWall.clone()
   leftWall.position.x = -roomSize / 2
-  leftWall.rotation.y = Math.PI / 2 // 👈 cambia la rotación para que mire hacia dentro
+  leftWall.rotation.y = Math.PI / 2
   scene.add(leftWall)
 }
 /*****************************************************************************************
@@ -346,14 +350,14 @@ function createTablet() {
  *              para lograr sombras suaves y realistas.
  *****************************************************************************************/
 function addTopSpotLights() {
-  const xlight = 50
-  const ylight = 50
-  const zlight = -40
-  const lightIntensity = 300
+  const xlight = 30 //50
+  const ylight = 30 // 50
+  const zlight = -20 // -40
+  const lightIntensity = 500 // 300
   const lightDistance = 100
-  const lightAngle = Math.PI // / 2 // 22.5 degrees
-  const lightPenumbra = 1 // 0.2 // Suavizado de la luz
-  const lightDecay = 1 // Decaimiento de la luz
+  const lightAngle = Math.PI / 12 // / 2 // 22.5 degrees
+  const lightPenumbra = 0.2 // 1 // 0.2 // Suavizado de la luz
+  const lightDecay = 2 // 1 // Decaimiento de la luz
 
   leftLight = new THREE.SpotLight(
     colorWhite,
@@ -378,7 +382,7 @@ function addTopSpotLights() {
   )
   centerLight.position.set(0, ylight, zlight + -zlight) // Posición de la luz (centro superior)
   centerLight.target = tabletGroup // Apunta hacia el cubo
-  centerLight.castShadow = true // Habilitar sombras
+  // centerLight.castShadow = true // Habilitar sombras
   scene.add(centerLight)
 
   rightLight = new THREE.SpotLight(
@@ -425,11 +429,11 @@ function addTopSpotLights() {
  *              El objeto vacío como objetivo (fixed target) permite dirigir la luz
  *              puntual con mayor precisión hacia el elemento deseado.
  *****************************************************************************************/
-function addPrincipalLights() {
+/*function addPrincipalLights() {
   const colorLights = 0xffffff // White
-  const lightIntensity = 800
+  const lightIntensity = 600 // 800
   const lightDistance = 100
-  const lightAngle = Math.PI / 4 // Degrees
+  const lightAngle = Math.PI / 3 // Degrees
   const lightPenumbra = 0.1 // Suavizado
   const lightDecay = 0.8 // Decaimiento
 
@@ -466,7 +470,7 @@ function addPrincipalLights() {
   scene.add(spotlight.target)
   scene.add(directionalLight)
   // scene.add(light)
-}
+}*/
 /*****************************************************************************************
  * FUNCTION: animateTabletRotation
  * AUTHOR: Muriel Vitale.
@@ -585,7 +589,7 @@ function updateOverlayPosition() {
     overlay.style.top = `${centerY}px`
     overlay.style.width = `${pixelWidth}px`
     overlay.style.height = `${pixelHeight}px`
-    overlay.style.transform = 'translate(-50%, -50%)'
+    // overlay.style.transform = 'translate(-50%, -50%)'
   }
 
   // if (screenWidth <= 480) {
@@ -651,7 +655,6 @@ function startAnimation(time) {
   renderer.render(scene, camera)
 
   if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
-    console.log('totalDuration - 0.5')
     updateOverlayPosition()
     showTabletContent.value = true
     overlayShown = true
@@ -662,59 +665,6 @@ function startAnimation(time) {
   } else {
     console.log('finalizo')
   }
-}
-/*****************************************************************************************
- * FUNCTION: transitionTabletOn
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Creates a smooth transition effect to simulate the "screen turning on"
- *              by gradually increasing the material's opacity and emissive intensity
- *              over a given duration. Used for animating the tablet's screen activation.
- *              On each animation frame:
- *              - Increments the progress counter.
- *              - Updates the material’s opacity and emissive intensity proportionally.
- *              - When complete, ensures final values are set and calls `onComplete`.
- * PARAMETERS:
- *   - duration (Number): Number of frames the transition lasts.
- *   - screenMaterial (THREE.Material): The material applied to the tablet screen.
- *   - onComplete (Function): Callback executed once the transition finishes.
- * *****************************************************************************************
- * DESCRIPCIÓN: Crea un efecto de transición suave que simula el encendido de la pantalla
- *              aumentando gradualmente la opacidad y la intensidad emisiva del material
- *              durante una duración determinada. Se usa para animar la activación de la
- *              pantalla de la tablet.
- *              En cada frame de animación:
- *              - Se incrementa el contador de progreso.
- *              - Se actualizan la opacidad y la intensidad emisiva del material.
- *              - Al finalizar, se aseguran los valores finales y se llama a `onComplete`.
- * PARÁMETROS:
- *   - duration (Número): Duración del efecto en número de frames.
- *   - screenMaterial (THREE.Material): Material aplicado a la pantalla de la tablet.
- *   - onComplete (Función): Callback ejecutado al finalizar la transición.
- *****************************************************************************************/
-function transitionTabletOn({ duration, screenMaterial, onComplete }) {
-  let progress = 0
-
-  function step() {
-    progress++
-    const t = progress / duration
-
-    screenMaterial.opacity = Math.min(t, 1)
-    screenMaterial.emissiveIntensity = Math.min(t, 1)
-    screenMaterial.needsUpdate = true
-
-    if (progress < duration) {
-      requestAnimationFrame(step)
-    } else {
-      screenMaterial.opacity = 1
-      screenMaterial.emissiveIntensity = 1
-      screenMaterial.needsUpdate = true
-
-      if (typeof onComplete === 'function') {
-        onComplete()
-      }
-    }
-  }
-  requestAnimationFrame(step)
 }
 </script>
 
@@ -744,7 +694,7 @@ function transitionTabletOn({ duration, screenMaterial, onComplete }) {
 }
 
 .start-screen {
-  height: 100vh; /* Asegura altura completa para el centrado vertical */
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -929,5 +879,27 @@ canvas {
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.screen-overlay {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.fade-in-screen {
+  animation: screenOn 0.8s ease forwards;
+}
+
+@keyframes screenOn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.03);
+    filter: brightness(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: brightness(1);
+  }
 }
 </style>
