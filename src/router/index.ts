@@ -10,11 +10,6 @@ const router = createRouter({
       component: IndexView,
     },
     {
-      path: '/main',
-      name: 'main',
-      component: () => import('@/views/MainView.vue'),
-    },
-    {
       path: '/blog',
       name: 'blog',
       component: () => import('@/views/BlogView.vue'),

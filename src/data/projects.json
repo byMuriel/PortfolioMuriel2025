@@ -1,0 +1,23 @@
+{
+  "0": {
+    "image": "/src/assets/images/MarieEventPlanner/MarieEP.jpg",
+    "name": "MarieEventPlanner",
+    "description": "Web development with a panel for users and administrators, an interface for registration and login. Creation of a database for clients, appointments, and administrator posts. Using HTML, CSS3, JavaScript, PHP, MySQL, Materialize, and Bootstrap.",
+    "link": "www.marieeventplanner.info",
+    "githubRep": "https://github.com/byMuriel/MarieEventPlanner"
+  },
+  "1": {
+    "image": "/src/assets/images/AlekoExpress/AlekoExpress-index1.jpg",
+    "name": "AlekoExpress",
+    "description": "Website layout for a company that offers various services, with a budget estimation form depending on the service required by the customer. Using HTML, CSS3, JavaScript, and Materialize.",
+    "link": "www.alekoexpress.info",
+    "githubRep": "https://github.com/byMuriel/AlekoExpress/tree/master"
+  },
+  "2": {
+    "image": "/src/assets/images/OdIsobertM/Od.IsobertMujica.jpg",
+    "name": "Od.IsobertMujica",
+    "description": "Web development with a panel for users and administrators, along with an interface for registration and login. Creation of a database for clients, appointments, and administrator posts. Using HTML, CSS3, JavaScript, PHP, MySQL, Materialize, and Bootstrap.",
+    "link": "www.isobertmujica.com",
+    "githubRep": "https://github.com/byMuriel/Od-IsobertMujica"
+  }
+}

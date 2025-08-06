@@ -1,3 +1,39 @@
+<template>
+  <div class="d-flex justify-content-center align-items-center bg-light">
+    <div class="container p-4" style="max-width: 600px">
+      <!-- Título -->
+      <div class="text-center mb-4 text-dark">
+        <h1>Blog</h1>
+      </div>
+
+      <!-- Botón Volver -->
+      <!-- <div class="col-3 mb-3 text-center">
+        <RouterLink to="/main">
+          <button class="btn btn-primary w-100">Go back</button>
+        </RouterLink>
+      </div> -->
+
+      <!-- Lista de Registros -->
+      <div class="text-center text-dark mt-4">
+        <h2>Items:</h2>
+        <ul class="list-unstyled mt-3">
+          <li
+            v-for="item in datos"
+            :key="item.id"
+            class="border rounded p-2 mb-2 d-flex flex-column text-start"
+          >
+            <span class="fw-bold text-dark">{{ item.id }} - {{ item.name }}</span>
+            <p class="mb-1">{{ item.content }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              <span>{{ item.date }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -90,42 +126,6 @@ async function eliminar(id: number): Promise<void> {
 
 onMounted(listar)
 </script>
-
-<template>
-  <div class="bg-dark min-vh-100 d-flex justify-content-center align-items-center bg-light">
-    <div class="container p-4" style="max-width: 600px">
-      <!-- Título -->
-      <div class="text-center mb-4">
-        <h1>Blog</h1>
-      </div>
-
-      <!-- Botón Volver -->
-      <div class="col-3 mb-3 text-center">
-        <RouterLink to="/main">
-          <button class="btn btn-primary w-100">Go back</button>
-        </RouterLink>
-      </div>
-
-      <!-- Lista de Registros -->
-      <div class="text-center mt-4">
-        <h2>Items:</h2>
-        <ul class="list-unstyled mt-3">
-          <li
-            v-for="item in datos"
-            :key="item.id"
-            class="border rounded p-2 mb-2 d-flex flex-column text-start"
-          >
-            <span class="fw-bold">{{ item.id }} - {{ item.name }}</span>
-            <p class="mb-1">{{ item.content }}</p>
-            <div class="d-flex justify-content-between align-items-center">
-              <span>{{ item.date }}</span>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</template>
 
 <style>
 @media (min-width: 1024px) {

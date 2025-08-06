@@ -1,0 +1,17 @@
+{
+  "mail": {
+    "logo": "/src/assets/images/ContactLogos/correo1.jpg",
+    "name": "",
+    "link": "contact@murielvitale.com"
+  },
+  "gitHub": {
+    "logo": "/src/assets/images/ContactLogos/github.jpg",
+    "name": "GitHub: /byMuriel",
+    "link": "https://github.com/byMuriel"
+  },
+  "linkedIn": {
+    "logo": "/src/assets/images/ContactLogos/linkedin.png",
+    "name": "LinkedIn: /murielvitale",
+    "link": "https://www.linkedin.com/in/murielvitale/"
+  }
+}

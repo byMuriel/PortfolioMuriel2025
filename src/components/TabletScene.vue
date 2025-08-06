@@ -80,50 +80,42 @@ let rotationStartedAt = null
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
- *              Initializes the entire 3D scene and sets up the main behavior:
- *              - Calls `initScene()` to configure the scene, camera, renderer, and controls.
- *              - Creates the 3D tablet model using `createTablet()`.
- *              - Adds light sources to the scene with `addLights()`.
- *              - Starts the animated rendering loop with `startAnimation()`.
- *              - Adds a global listener to handle keyboard events, such as ENTER,
- *                using `handleKeyDown`.
+ *              Sets up a listener for the `load` event on the window object.
+ *              Once the window is fully loaded, it hides the loading states by:
+ *              - Setting `isLoading` to false.
+ *              - Setting `showPreloader` to false.
  * **************************************************************************************
  * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta cuando el componente es montado.
- *              Inicializa toda la escena 3D y establece el comportamiento principal:
- *              - Llama a `initScene()` para configurar la escena, cámara, renderer y controles.
- *              - Crea el modelo 3D de la tablet mediante `createTablet()`.
- *              - Añade fuentes de luz a la escena con `addLights()`.
- *              - Inicia el bucle de renderizado animado con `startAnimation()`.
- *              - Agrega un listener global para manejar eventos de teclado, como ENTER,
- *                usando `handleKeyDown`.
+ *              Establece un listener para el evento `load` de la ventana.
+ *              Una vez que la ventana está completamente cargada, oculta los indicadores
+ *              de carga al:
+ *              - Establecer `isLoading` en falso.
+ *              - Establecer `showPreloader` en falso.
  *****************************************************************************************/
 onMounted(() => {
   window.addEventListener('load', () => {
-    setTimeout(() => {
-      isLoading.value = false
-      showPreloader.value = false
-    }, 500)
+    // setTimeout(() => {
+    isLoading.value = false
+    showPreloader.value = false
+    // }, 500)
   })
 })
 /*****************************************************************************************
-   * LIFECYCLE HOOK: onBeforeUnmount
-   * AUTHOR: Muriel Vitale.
-   * DESCRIPTION: Vue lifecycle hook that runs just before the component is destroyed.
-   *              It properly cleans up all resources and event listeners related to the 3D scene:
-   *              - Removes the global keyboard listener (`keydown`).
-   *              - Cancels the animation loop using `cancelAnimationFrame`.
-   *              - Frees renderer resources with `renderer.dispose()`.
-   *              - Removes the WebGL canvas from the DOM if it exists.
-   * ***************************************************************************************
-   * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
-   *              sea destruido. Se encarga de limpiar correctamente todos los recursos y
-   *              listeners asociados a la escena 3D:
-   *              - Elimina el listener global del teclado (`keydown`).
-   *              - Cancela el bucle de animación con `cancelAnimationFrame`.
-   *              - Libera los recursos del renderizador con `renderer.dispose()`.
-   *              - Elimina el canvas WebGL del DOM si existe.
-
-   *****************************************************************************************/
+ * LIFECYCLE HOOK: onBeforeUnmount
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Vue lifecycle hook that runs just before the component is destroyed.
+ *              Cleans up rendering-related resources to avoid memory leaks:
+ *              - Cancels the animation loop with `cancelAnimationFrame`.
+ *              - Disposes of the WebGL renderer with `renderer.dispose()`.
+ *              - Removes the renderer's canvas from the DOM if it was appended.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
+ *              sea destruido. Libera los recursos relacionados con el renderizado para evitar
+ *              fugas de memoria:
+ *              - Cancela el bucle de animación con `cancelAnimationFrame`.
+ *              - Libera los recursos del renderizador con `renderer.dispose()`.
+ *              - Elimina el canvas WebGL del DOM si fue añadido.
+ *****************************************************************************************/
 onBeforeUnmount(() => {
   // window.removeEventListener('keydown', handleKeyDown)
   cancelAnimationFrame(animationId)
@@ -132,9 +124,44 @@ onBeforeUnmount(() => {
     container.value.removeChild(renderer.domElement)
   }
 })
+/*****************************************************************************************
+ * FUNCTION: onPreloaderLeave
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles the final step of the preloader transition.
+ *              - Sets `showPreloader` to false to hide the preloader completely after its exit.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Maneja el paso final de la transición del preloader.
+ *              - Establece `showPreloader` en falso para ocultar completamente el preloader
+ *                después de su salida.
+ *****************************************************************************************/
 function onPreloaderLeave() {
   showPreloader.value = false
 }
+/*****************************************************************************************
+ * FUNCTION: start
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes the 3D experience after the initial screen is dismissed.
+ *              - Hides the start container by setting `startContainer` to false.
+ *              - Resets animation-related variables (`startTime` and `rotationStartedAt`).
+ *              - Initializes and configures the 3D scene:
+ *                  - Calls `initScene()` to set up scene, camera, and renderer.
+ *                  - Creates the room environment with `createRoomEnvironment()`.
+ *                  - Builds the tablet model with `createTablet()`.
+ *                  - Adds lighting with `addTopSpotLights()`.
+ *              - Renders the initial frame.
+ *              - Starts the animation loop with `requestAnimationFrame(startAnimation)`.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Inicializa la experiencia 3D una vez que se oculta la pantalla de inicio.
+ *              - Oculta el contenedor de inicio estableciendo `startContainer` en falso.
+ *              - Reinicia las variables relacionadas con la animación (`startTime` y `rotationStartedAt`).
+ *              - Inicializa y configura la escena 3D:
+ *                  - Llama a `initScene()` para preparar la escena, cámara y renderizador.
+ *                  - Crea el entorno de la habitación con `createRoomEnvironment()`.
+ *                  - Construye el modelo de la tablet con `createTablet()`.
+ *                  - Añade iluminación con `addTopSpotLights()`.
+ *              - Renderiza el primer fotograma.
+ *              - Inicia el bucle de animación con `requestAnimationFrame(startAnimation)`.
+ *****************************************************************************************/
 function start() {
   startContainer.value = false
   startTime = null
@@ -151,24 +178,21 @@ function start() {
 /*****************************************************************************************
  * FUNCTION: initScene
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Initializes and sets up the main 3D scene using Three.js.
- *              This function creates the basic elements required to render a scene:
- *              - Creates a `Scene` object.
- *              - Sets up a perspective camera positioned in front of the scene.
- *              - Creates a WebGL renderer with antialiasing and appends it to the DOM.
- *              - Sets the renderer size to match the window dimensions.
- *              - Configures a background color for the scene.
- *              - Adds orbital controls to navigate the scene (without zoom or pan).
- * ****************************************************************************************
- * DESCRIPCIÓN: Inicializa y configura la escena 3D principal usando Three.js.
- *              Esta función crea los elementos básicos necesarios para renderizar
- *              una escena:
- *              - Crea un objeto `Scene`.
- *              - Configura una cámara con perspectiva posicionada frente a la escena.
- *              - Crea un renderizador WebGL con antialiasing y lo añade al DOM.
- *              - Establece el tamaño del renderizador con las dimensiones de la ventana.
- *              - Configura un fondo de color para la escena.
- *              - Añade controles orbitales para navegar la escena (sin zoom ni paneo).
+ * DESCRIPTION: Initializes the base structure of the 3D scene.
+ *              - Creates a new THREE.Scene instance.
+ *              - Configures a PerspectiveCamera with a predefined FOV and aspect ratio.
+ *              - Positions the camera in the scene.
+ *              - Initializes the WebGLRenderer with anti-aliasing and buffer preservation.
+ *              - Sets renderer settings such as size and background color.
+ *              - Appends the renderer's canvas to the DOM container.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Inicializa la estructura base de la escena 3D.
+ *              - Crea una nueva instancia de THREE.Scene.
+ *              - Configura una cámara en perspectiva con FOV y aspecto definidos.
+ *              - Posiciona la cámara en la escena.
+ *              - Inicializa el WebGLRenderer con suavizado (antialias) y preservación de buffer.
+ *              - Establece configuraciones del renderer como tamaño y color de fondo.
+ *              - Añade el canvas del renderer al contenedor en el DOM.
  *****************************************************************************************/
 function initScene() {
   // Create scene / Crear escena
@@ -192,6 +216,21 @@ function initScene() {
   renderer.setClearColor(colorFondo)
   container.value.appendChild(renderer.domElement)
 }
+/*****************************************************************************************
+ * FUNCTION: createRoomEnvironment
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Builds a cubic room environment to contain the 3D scene.
+ *              - Creates and adds a horizontal floor plane.
+ *              - Creates and positions four vertical wall planes (back, front, left, right).
+ *              - All elements share the same color and dimensions based on `roomSize` and `wallHeight`.
+ *              - The room acts as the background/container for the rest of the 3D elements.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Construye un entorno cúbico tipo habitación para contener la escena 3D.
+ *              - Crea y añade un plano horizontal como suelo.
+ *              - Crea y posiciona cuatro planos verticales como paredes (trasera, frontal, izquierda y derecha).
+ *              - Todos los elementos comparten el mismo color y dimensiones basadas en `roomSize` y `wallHeight`.
+ *              - La habitación actúa como fondo o contenedor para el resto de los elementos 3D.
+ *****************************************************************************************/
 function createRoomEnvironment() {
   const roomSize = 100
   const wallHeight = 100
@@ -230,29 +269,26 @@ function createRoomEnvironment() {
   scene.add(leftWall)
 }
 /*****************************************************************************************
-   * FUNCTION: createTablet
-   * AUTHOR: Muriel Vitale.
-   * DESCRIPTION: Builds and adds a 3D tablet model to the scene using Three.js.
-   *              This function groups the main components that make up the tablet:
-   *              - Outer frame (top, bottom, left, and right edges).
-   *              - Back cover with rounded geometry.
-   *              - Recessed screen with a configurable material (`screenMaterial`).
-   *              - Reference object (target) for spotlight-type lighting.
-   *
-   *              The complete group (`tabletGroup`) is added to the main scene (`scene`).
-   *              Uses rounded geometries (`RoundedBoxGeometry`) and PBR materials.
-   * *****************************************************************************************
-   * DESCRIPCIÓN: Construye y añade a la escena un modelo 3D de una tablet utilizando Three.js.
-   *              Esta función agrupa los componentes principales que componen la tablet:
-   *              - Marco exterior (bordes superior, inferior, izquierdo y derecho).
-   *              - Tapa trasera con geometría redondeada.
-   *              - Pantalla hundida con material configurable (screenMaterial).
-   *              - Objeto de referencia (target) para iluminación tipo spotlight.
-   *
-   *              El grupo completo (`tabletGroup`) se agrega a la escena principal (`scene`).
-   *              Utiliza geometrías redondeadas (RoundedBoxGeometry) y materiales PBR.
-
-   *****************************************************************************************/
+ * FUNCTION: createTablet
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Constructs the 3D tablet model and adds it to the scene.
+ *              - Builds the tablet frame using four rounded box geometries (top, bottom, left, right).
+ *              - Adds a back cover plate slightly behind the frame for depth.
+ *              - Creates a sunken black screen positioned slightly in front.
+ *              - Sets a target object at screen position to help direct spotlight focus.
+ *              - Groups all components in `tabletGroup` and adds it to the scene.
+ *              - Adjusts the camera to look at the tablet’s position.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Construye el modelo 3D de la tablet y lo añade a la escena.
+ *              - Crea el marco de la tablet usando cuatro geometrías de caja redondeada
+ *                (superior, inferior, izquierda y derecha).
+ *              - Añade una tapa trasera justo detrás del marco para dar profundidad.
+ *              - Crea una pantalla negra ligeramente hundida en el frente.
+ *              - Añade un objeto objetivo en la posición de la pantalla para dirigir
+ *                la iluminación tipo spotlight.
+ *              - Agrupa todos los componentes en `tabletGroup` y lo añade a la escena.
+ *              - Ajusta la cámara para que apunte hacia la posición de la tablet.
+ *****************************************************************************************/
 function createTablet() {
   // Tablet frame / Marco de la Tablet
   const frameMaterial = new THREE.MeshStandardMaterial({
@@ -321,33 +357,23 @@ function createTablet() {
 /*****************************************************************************************
  * FUNCTION: addTopSpotLights
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Adds three directional SpotLights to the top area of the scene to simulate
- *              dramatic lighting from different angles.
- *              Each light is positioned at a different horizontal point:
- *              - Left (white)
- *              - Center (white)
- *              - Right (white)
- *
- *              All lights are targeted at the tablet group and configured to cast shadows.
- *              Shadow rendering is enabled globally, and the tablet group is marked
- *              as both a shadow caster and receiver.
- *
- *              Lighting details include intensity, angle, penumbra, and decay to control
- *              realism and softness of shadows.
- *****************************************************************************************
- * DESCRIPCIÓN: Añade tres luces tipo SpotLight en la parte superior de la escena para
- *              simular una iluminación dramática desde distintos ángulos.
- *              Cada luz está ubicada en un punto horizontal distinto:
- *              - Izquierda (blanca)
- *              - Centro (blanca)
- *              - Derecha (blanca)
- *
- *              Todas las luces están dirigidas hacia el grupo de la tablet y configuradas
- *              para proyectar sombras. El renderizador habilita el uso de sombras y
- *              la tablet se marca como emisora y receptora de sombras.
- *
- *              Se ajustan propiedades como intensidad, ángulo, penumbra y decaimiento
- *              para lograr sombras suaves y realistas.
+ * DESCRIPTION: Adds three directional spotlights positioned above the tablet to simulate
+ *              focused top lighting.
+ *              - Creates left, center, and right spotlights with configured intensity,
+ *                distance, angle, penumbra, and decay.
+ *              - Positions each light above the scene, targeting the tablet group.
+ *              - Enables shadows for the left and right lights.
+ *              - Activates shadow mapping on the renderer.
+ *              - Allows the tablet group to cast and receive shadows.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Añade tres luces direccionales tipo spotlight posicionadas sobre la tablet
+ *              para simular iluminación cenital.
+ *              - Crea focos izquierdo, central y derecho con intensidad, distancia, ángulo,
+ *                penumbra y decaimiento configurados.
+ *              - Posiciona cada luz sobre la escena, apuntando al grupo de la tablet.
+ *              - Activa las sombras para las luces izquierda y derecha.
+ *              - Habilita el uso de mapas de sombras en el renderizador.
+ *              - Permite que la tablet proyecte y reciba sombras.
  *****************************************************************************************/
 function addTopSpotLights() {
   const xlight = 30 //50
@@ -408,26 +434,19 @@ function addTopSpotLights() {
 /*****************************************************************************************
  * FUNCTION: addPrincipalLights
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Adds general lighting to the 3D scene, including:
- *              - AmbientLight for uniform base illumination.
- *              - Two DirectionalLights simulating sunlight or daylight.
- *              - A focused SpotLight directed at a specific point (fixed target).
- *
- *              These lights are intended to provide consistent and realistic lighting
- *              across the entire scene and complement the SpotLights added elsewhere.
- *
- *              The fixed target helps direct the spotlight precisely onto the subject.
- *****************************************************************************************
- * DESCRIPCIÓN: Añade iluminación general a la escena 3D, incluyendo:
- *              - Luz ambiental (AmbientLight) para una iluminación base uniforme.
- *              - Dos luces direccionales (DirectionalLight) que simulan luz solar o natural.
- *              - Una luz puntual (SpotLight) dirigida a un punto específico (target fijo).
- *
- *              Estas luces están diseñadas para proporcionar una iluminación constante
- *              y realista a lo largo de toda la escena, complementando las luces superiores.
- *
- *              El objeto vacío como objetivo (fixed target) permite dirigir la luz
- *              puntual con mayor precisión hacia el elemento deseado.
+ * DESCRIPTION: Adds the main lighting sources to the 3D scene to simulate natural and
+ *              ambient illumination.
+ *              - Adds an ambient light for uniform overall lighting.
+ *              - Adds a directional light to simulate sunlight or daylight.
+ *              - Adds a spotlight pointing to a specific fixed target in the scene.
+ *              - Configures spotlight properties: intensity, angle, penumbra, distance, and decay.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Añade las fuentes de iluminación principales a la escena 3D para simular
+ *              iluminación natural y ambiental.
+ *              - Añade una luz ambiental para iluminar de forma uniforme toda la escena.
+ *              - Añade una luz direccional que simula luz solar o luz diurna.
+ *              - Añade un spotlight que apunta a un objetivo fijo en la escena.
+ *              - Configura las propiedades del spotlight: intensidad, ángulo, penumbra, distancia y decaimiento.
  *****************************************************************************************/
 /*function addPrincipalLights() {
   const colorLights = 0xffffff // White
@@ -474,59 +493,48 @@ function addTopSpotLights() {
 /*****************************************************************************************
  * FUNCTION: animateTabletRotation
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Animates the rotation of the tablet around its Y-axis based on elapsed time.
- *              The rotation spans a full 360° turn (`2π` radians) over a given duration.
- *              The interpolation is linear and clamps at the end of the duration.
- *
- * PARAMETERS:
- *   - elapsedTime (Number): Total time passed since the animation started, in seconds.
- *   - durationRotation (Number): Duration of the rotation phase, in seconds.
- *****************************************************************************************
- * DESCRIPCIÓN: Anima la rotación de la tablet alrededor de su eje Y en función
- *              del tiempo transcurrido. La rotación abarca un giro completo de 360°
- *              (`2π` radianes) durante la duración establecida.
- *              La interpolación es lineal y se detiene al completar el tiempo.
- *
- * PARÁMETROS:
- *   - elapsedTime (Número): Tiempo total transcurrido desde el inicio de la animación, en segundos.
- *   - durationRotation (Número): Duración de la fase de rotación, en segundos.
+ * DESCRIPTION: Animates the Y-axis rotation of the tablet over a specified duration.
+ *              - Calculates a normalized time `t` based on elapsed time and total duration.
+ *              - Applies a full 360° rotation (2π radians) progressively as `t` increases.
+ *              - Ensures the rotation does not exceed one full turn by clamping `t` to a max of 1.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Anima la rotación de la tablet sobre el eje Y durante una duración definida.
+ *              - Calcula un tiempo normalizado `t` en función del tiempo transcurrido y la duración total.
+ *              - Aplica una rotación completa de 360° (2π radianes) de forma progresiva a medida que `t` aumenta.
+ *              - Asegura que la rotación no exceda una vuelta completa limitando `t` a un máximo de 1.
  *****************************************************************************************/
 function animateTabletRotation(elapsedTime, durationRotation) {
   const t = Math.min(elapsedTime / durationRotation, 1)
-  // Medio giro (180°) en Y, interpolado
   tabletGroup.rotation.y = Math.PI * 2 * t
 }
 /*****************************************************************************************
  * FUNCTION: animateCameraZoom
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Animates the transition of the camera from a distant starting position and
- *              field of view (FOV) to a closer final position and FOV.
- *              This creates a zoom-in effect centered on the tablet over a fixed duration.
- *
- *              If the zoom delay has not yet elapsed, the function exits early.
- *              Otherwise, it interpolates both camera position and FOV based on progress.
- *              At the end of the animation, the camera is set exactly at the final state.
- *              The camera is updated and set to look at the tablet at each frame.
+ * DESCRIPTION: Animates the camera transition from a distant starting position and wide
+ *              field of view (FOV) to a closer position and narrower FOV, creating a smooth
+ *              zoom-in effect centered on the tablet.
+ *              - If the delay period hasn’t elapsed yet, the function exits early.
+ *              - During the zoom duration, interpolates camera position and FOV.
+ *              - Once finished, sets the camera exactly to the final position and FOV.
+ *              - Updates the projection matrix and ensures the camera always looks at the tablet.
  *
  * PARAMETERS:
- *   - elapsedTime (Number): Time passed since the overall animation began, in seconds.
- *   - delay (Number): Time offset that delays the start of the zoom animation.
- *   - durationCameraZoom (Number): Duration of the zoom phase, in seconds.
- *****************************************************************************************
- * DESCRIPCIÓN: Anima la transición de la cámara desde una posición inicial lejana y un
- *              campo de visión amplio (FOV), hacia una posición más cercana y un FOV reducido.
- *              Esto genera un efecto de acercamiento centrado en la tablet durante un tiempo fijo.
- *
- *              Si aún no ha transcurrido el tiempo de espera (delay), la función no ejecuta nada.
- *              En caso contrario, interpola la posición de la cámara y el FOV según el progreso.
- *              Al finalizar, la cámara se ajusta exactamente al estado final.
- *              En cada frame, se actualiza la matriz de proyección y se orienta la cámara
- *              hacia la tablet.
+ *   - elapsedTime (Number): Time passed since the full animation started, in seconds.
+ *   - delay (Number): Wait time before starting the zoom animation.
+ *   - durationCameraZoom (Number): Total duration of the zoom-in animation phase, in seconds.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Anima la transición de la cámara desde una posición inicial alejada y un
+ *              campo de visión amplio (FOV), hacia una posición más cercana y un FOV reducido,
+ *              generando un efecto de zoom suave centrado en la tablet.
+ *              - Si el tiempo de espera (delay) no ha transcurrido, la función termina sin ejecutar.
+ *              - Durante la fase de zoom, interpola la posición y el FOV de la cámara.
+ *              - Al finalizar, la cámara se ajusta exactamente a su posición y FOV finales.
+ *              - Se actualiza la matriz de proyección y se orienta la cámara hacia la tablet.
  *
  * PARÁMETROS:
- *   - elapsedTime (Número): Tiempo transcurrido desde el inicio general de la animación, en segundos.
- *   - delay (Número): Tiempo de espera antes de comenzar la animación de zoom.
- *   - durationCameraZoom (Número): Duración de la fase de acercamiento, en segundos.
+ *   - elapsedTime (Número): Tiempo transcurrido desde el inicio total de la animación, en segundos.
+ *   - delay (Número): Tiempo de espera antes de iniciar la animación de zoom.
+ *   - durationCameraZoom (Número): Duración total de la fase de acercamiento, en segundos.
  *****************************************************************************************/
 function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
   const cameraElapsedTime = elapsedTime - delay
@@ -544,8 +552,25 @@ function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
   camera.updateProjectionMatrix()
   camera.lookAt(tabletGroup.position)
 }
+/*****************************************************************************************
+ * FUNCTION: updateOverlayPosition
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Projects the 3D screen mesh position and dimensions to 2D screen space and
+ *              updates the position and size of the HTML overlay (`#screen-overlay`) accordingly.
+ *              - Computes the 3D positions of the screen's center, top-left, and bottom-right corners.
+ *              - Converts those positions to world coordinates and then projects them into 2D screen space.
+ *              - Calculates the pixel coordinates and dimensions for the overlay.
+ *              - Updates the overlay’s CSS to match the projected area of the 3D screen.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Proyecta la posición y dimensiones del mesh de la pantalla 3D al espacio
+ *              de pantalla 2D, y actualiza en consecuencia la posición y tamaño del
+ *              overlay HTML (`#screen-overlay`).
+ *              - Calcula las posiciones 3D del centro, esquina superior izquierda y esquina inferior derecha de la pantalla.
+ *              - Convierte esas posiciones a coordenadas del mundo y luego las proyecta al espacio de pantalla 2D.
+ *              - Calcula las coordenadas en píxeles y dimensiones del área proyectada.
+ *              - Actualiza los estilos CSS del overlay para que coincidan con la pantalla 3D.
+ *****************************************************************************************/
 function updateOverlayPosition() {
-  console.log('updateOverlayPosition')
   if (!screen) return
 
   const vector = new THREE.Vector3()
@@ -605,38 +630,31 @@ function updateOverlayPosition() {
 /*****************************************************************************************
  * FUNCTION: startAnimation
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Starts and manages a two-phase animation sequence for the 3D scene using
- *              `requestAnimationFrame`. The animation consists of:
- *              - Phase 1: A smooth rotation of the tablet (180° on Y-axis) over a defined duration.
- *              - Phase 2: A zoom-in camera animation that moves and adjusts the field of view
- *                         to focus on the tablet.
+ * DESCRIPTION: Main animation loop that orchestrates the tablet’s entry animation sequence.
+ *              - Records the initial start time on the first call.
+ *              - Calculates elapsed time since the beginning.
+ *              - Animates the tablet’s Y-axis rotation during the first `durationRotation` seconds.
+ *              - Starts the camera zoom animation after the tablet rotation begins.
+ *              - Renders the current frame of the scene.
+ *              - Triggers the HTML overlay and tablet content visibility slightly before the end.
+ *              - Continues requesting animation frames until the full sequence completes.
  *
- *              The loop updates both the rotation and camera animation based on elapsed time,
- *              rendering the scene at each frame to ensure smooth transitions.
+ * NOTES:
+ *   - `overlayShown` prevents multiple overlay updates.
+ *   - `recorteTiempoParaMostrarLaPantalla` is a time offset to show content slightly earlier.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Bucle principal de animación que orquesta la secuencia de entrada de la tablet.
+ *              - Registra el tiempo de inicio en la primera llamada.
+ *              - Calcula el tiempo transcurrido desde el inicio.
+ *              - Anima la rotación sobre el eje Y de la tablet durante los primeros `durationRotation` segundos.
+ *              - Inicia la animación del zoom de cámara una vez que comienza la rotación.
+ *              - Renderiza el fotograma actual de la escena.
+ *              - Muestra el overlay HTML y el contenido de la tablet ligeramente antes del final.
+ *              - Continúa solicitando nuevos frames hasta que finaliza toda la secuencia.
  *
- *              On each frame:
- *              - Calculates elapsed time since animation started.
- *              - Performs tablet rotation if within the rotation phase.
- *              - Starts and executes camera zoom once rotation is complete.
- *              - Renders the updated scene from the camera’s perspective.
- *              - Requests the next frame if total animation duration has not been exceeded.
- *****************************************************************************************
- * DESCRIPCIÓN: Inicia y gestiona una secuencia de animación en dos fases para la escena 3D
- *              utilizando `requestAnimationFrame`. La animación consiste en:
- *              - Fase 1: Una rotación suave de la tablet (180° en el eje Y) durante una duración definida.
- *              - Fase 2: Una animación de zoom que mueve la cámara y ajusta el campo de visión
- *                        para enfocar la tablet.
- *
- *              El bucle actualiza tanto la rotación como la animación de cámara en función del
- *              tiempo transcurrido, renderizando la escena en cada fotograma para garantizar
- *              transiciones suaves.
- *
- *              En cada frame:
- *              - Calcula el tiempo transcurrido desde el inicio de la animación.
- *              - Ejecuta la rotación de la tablet si aún está dentro de la fase de rotación.
- *              - Inicia y ejecuta el zoom de cámara una vez finalizada la rotación.
- *              - Renderiza la escena actualizada desde la perspectiva de la cámara.
- *              - Solicita el siguiente frame si la duración total de la animación no se ha cumplido.
+ * NOTAS:
+ *   - `overlayShown` evita múltiples actualizaciones del overlay.
+ *   - `recorteTiempoParaMostrarLaPantalla` es un recorte de tiempo para adelantar el contenido ligeramente.
  *****************************************************************************************/
 function startAnimation(time) {
   if (startTime === null) startTime = time

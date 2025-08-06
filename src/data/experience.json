@@ -1,0 +1,11 @@
+{
+  "0": {
+    "logo": "/src/assets/images/ExperienceLogos/LogoLogytel.png",
+    "name": "LOGISTICA Y TELECOMUNICACION S.L.",
+    "position": "Full Stack Developer",
+    "initDate": "January 2024",
+    "finalDate": "Present",
+    "functions": "- Develop and maintain responsive web applications.\n- Collaborate with UI/UX designers to implement clean and accessible user interfaces.\n- Optimize application performance and ensure cross-browser compatibility.\n- Integrate and manage data using relational databases.",
+    "link": "https://logytel.es/"
+  }
+}

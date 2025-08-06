@@ -2,44 +2,203 @@
 <template>
   <div class="container-fluid initContent m-0 p-0">
     <div class="clock-container">
-      <div class="m-0 p-0 clock-time"><p>17:58</p></div>
-      <div class="m-0 p-9 clock-date"><p>Sun, 20 july</p></div>
+      <div class="clock-time">
+        <p>{{ currentTime }}</p>
+      </div>
+      <div class="clock-date">
+        <p>{{ currentDate }}</p>
+      </div>
     </div>
-    <div class="col-6 d-flex justify-content-center align-items-center mt-5">
-      <button id="btnSkills" class="btn btn-primary w-100 me-5" @click="goTo('skills')">
-        Skills
+    <div class="icon-grid mt-3">
+      <button class="btn app-button" @click="goTo('about')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/aboutIcon.png" alt="" />
       </button>
-      <button id="btnExperience" class="btn btn-primary w-100" @click="goTo('experience')">
-        Experience
+      <button class="btn app-button" @click="goTo('projects')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/projectsIcon.png" alt="" />
+      </button>
+      <button class="btn app-button" @click="goTo('experience')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/experienceIcon.png" alt="" />
+      </button>
+      <button class="btn app-button" @click="goTo('skills')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/skillsIcon.png" alt="" />
+      </button>
+      <button class="btn app-button" @click="goTo('contact')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/contactIcon.png" alt="" />
+      </button>
+      <button class="btn app-button" @click="goTo('blog')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/blogIcon.png" alt="" />
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { defineEmits } from 'vue'
+/*****************************************************************************************
+ * SCRIPT SETUP: TabletScreens/Init.vue
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Controls the initial tablet screen and its behavior.
+ *              - Handles screen navigation via `goTo()` with `defineEmits`.
+ *              - Displays current time in HH:mm format, updated every minute.
+ *              - Displays current date in format 'Sun, 20 July'.
+ *              - Exposes `screen` (DOM ref) and `domReady` (Promise) to parent component.
+ *              - Cleans up interval timer on unmount to prevent memory leaks.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Controla la pantalla inicial de la tablet y su comportamiento.
+ *              - Gestiona la navegación entre pantallas usando `goTo()` y `defineEmits`.
+ *              - Muestra la hora actual en formato HH:mm, actualizándola cada minuto.
+ *              - Muestra la fecha actual en formato 'Sun, 20 July'.
+ *              - Expone `screen` (referencia DOM) y `domReady` (Promesa) al componente padre.
+ *              - Limpia el intervalo de actualización al desmontar para evitar fugas de memoria.
+ *****************************************************************************************/
+
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const emit = defineEmits(['change-screen'])
+const currentTime = ref('')
+const currentDate = ref('')
+
+/*****************************************************************************************
+ * FUNCTION: goTo
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation between different tablet screens based on a route keyword.
+ *              - Emits a `change-screen` event with the appropriate view name.
+ *              - Supports the following route values: "skills", "experience", "about",
+ *                "projects", "contact", and "blog".
+ *
+ * DESCRIPCIÓN: Maneja la navegación entre diferentes pantallas de la tablet según una palabra clave.
+ *              - Emite un evento `change-screen` con el nombre de la vista correspondiente.
+ *              - Soporta los siguientes valores de ruta: "skills", "experience", "about",
+ *                "projects", "contact" y "blog".
+ *****************************************************************************************/
 const goTo = (route) => {
-  console.log('Hiciste click en el boton')
-  if (route == 'skills') {
-    console.log('skills')
+  if (route === 'skills') {
     emit('change-screen', 'Skills')
-  }
-  if (route == 'experience') {
+  } else if (route === 'experience') {
     emit('change-screen', 'Experience')
+  } else if (route === 'about') {
+    emit('change-screen', 'About')
+  } else if (route === 'projects') {
+    emit('change-screen', 'Projects')
+  } else if (route === 'contact') {
+    emit('change-screen', 'Contact')
+  } else if (route === 'blog') {
+    emit('change-screen', 'Blog')
   }
 }
 
-const screen = ref(null)
+/*****************************************************************************************
+ * VARIABLE: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: A Promise that resolves when the component has been mounted.
+ *              - Useful for delaying operations until the DOM is ready.
+ *              - Used in conjunction with `defineExpose()` to allow parent access.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Promesa que se resuelve cuando el componente ha sido montado.
+ *              - Útil para retrasar operaciones hasta que el DOM esté listo.
+ *              - Se utiliza junto con `defineExpose()` para permitir el acceso desde el padre.
+ *****************************************************************************************/
 const domReady = new Promise((resolve) => {
-  onMounted(() => resolve())
+  onMounted(resolve)
 })
 
-defineExpose({
-  screen,
-  domReady,
+/*****************************************************************************************
+ * FUNCTION CALL: defineExpose
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Makes internal variables accessible to the parent component.
+ *              - Exposes `screen` (DOM reference) and `domReady` (Promise).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Expone variables internas al componente padre.
+ *              - Expone `screen` (referencia al DOM) y `domReady` (Promesa).
+ *****************************************************************************************/
+defineExpose({ screen, domReady })
+
+/*****************************************************************************************
+ * FUNCTION: updateTime
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Updates the reactive `currentTime` variable with the current time in HH:mm format.
+ *              - Pads hours and minutes with leading zeros if needed.
+ *              - Used to keep a live digital clock on the screen.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Actualiza la variable reactiva `currentTime` con la hora actual en formato HH:mm.
+ *              - Rellena con ceros a la izquierda si es necesario.
+ *              - Se utiliza para mantener un reloj digital en la pantalla.
+ *****************************************************************************************/
+const updateTime = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  currentTime.value = `${hours}:${minutes}`
+}
+
+/*****************************************************************************************
+ * FUNCTION: updateDate
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Updates the reactive `currentDate` variable with the current date
+ *              formatted as 'Day, DD Month' (e.g., 'Sun, 04 August').
+ *              - Retrieves day and month names from predefined arrays.
+ *              - Pads the day number with a leading zero.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Actualiza la variable reactiva `currentDate` con la fecha actual
+ *              formateada como 'Day, DD Month' (ej: 'Sun, 04 August').
+ *              - Obtiene los nombres del día y del mes desde arreglos predefinidos.
+ *              - Rellena con cero a la izquierda el número del día.
+ *****************************************************************************************/
+const updateDate = () => {
+  const now = new Date()
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
+
+  const dayName = days[now.getDay()]
+  const dayNumber = String(now.getDate()).padStart(2, '0')
+  const monthName = months[now.getMonth()]
+  currentDate.value = `${dayName}, ${dayNumber} ${monthName}`
+}
+
+let timer = null
+
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Runs once the component is mounted to the DOM.
+ *              - Initializes the clock by calling `updateTime()` and `updateDate()`.
+ *              - Starts a timer to update the time every 60 seconds.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Se ejecuta una vez que el componente ha sido montado en el DOM.
+ *              - Inicializa el reloj llamando a `updateTime()` y `updateDate()`.
+ *              - Inicia un temporizador para actualizar la hora cada 60 segundos.
+ *****************************************************************************************/
+onMounted(() => {
+  updateTime()
+  updateDate()
+  timer = setInterval(updateTime, 1000 * 60)
+})
+
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onBeforeUnmount
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Runs just before the component is destroyed.
+ *              - Clears the interval timer used to update the clock.
+ *              - Prevents memory leaks from lingering timers.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Se ejecuta justo antes de que el componente sea destruido.
+ *              - Limpia el temporizador usado para actualizar el reloj.
+ *              - Previene fugas de memoria por temporizadores activos.
+ *****************************************************************************************/
+onBeforeUnmount(() => {
+  clearInterval(timer)
 })
 </script>
 
@@ -48,7 +207,7 @@ defineExpose({
   pointer-events: auto;
   width: 100%;
   height: 100%;
-  background-image: url('@/assets/wallpaperTablet.png');
+  background-image: url('@/assets/textures/wallpaperTablet.png');
   background-size: cover;
   background-position: center;
   display: flex;
@@ -58,14 +217,13 @@ defineExpose({
   font-family: sans-serif;
   box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
 }
-
 .clock-container {
-  width: 20rem;
-  height: 10rem;
+  width: 18rem;
+  height: 7rem;
   background-color: rgba(253, 251, 251, 0.3);
   box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.5);
   border-radius: 1rem;
-  margin: 5rem auto 0 auto;
+  margin: 2rem auto 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -74,15 +232,64 @@ defineExpose({
 }
 .clock-time {
   width: 100%;
+  height: 70%;
   font-family:
     'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana,
     sans-serif;
   font-weight: bolder;
-  font-size: 5rem;
-  text-align: center;
+  font-size: 3.5rem;
+  margin: 0rem;
 }
-
-.btn:hover {
+.clock-date {
+  width: 100%;
+  height: 30%;
+  font-family:
+    'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana,
+    sans-serif;
+  font-weight: bolder;
+  font-size: 1rem;
+  margin: 0;
+}
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  justify-items: center;
+  padding: 1rem;
+}
+.tamanioIconoApp {
+  width: 6rem;
+}
+.app-button {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 20px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.app-button:hover {
+  transform: scale(1.07);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   cursor: pointer;
+}
+.app-button:active {
+  transform: scale(0.95);
+  transition: transform 0.05s ease;
+}
+@keyframes popIn {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.app-button {
+  animation: popIn 0.4s ease forwards;
 }
 </style>
