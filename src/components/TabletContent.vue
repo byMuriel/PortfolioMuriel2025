@@ -1,6 +1,10 @@
 <template>
   <div ref="screen" class="screen-content">
-    <BackButton v-if="currentView != Init" @change-screen="handleChangeScreen"></BackButton>
+    <BackButton
+      v-if="currentView != Init"
+      @change-screen="handleChangeScreen"
+      class="back-button"
+    ></BackButton>
     <component :is="currentView" @change-screen="handleChangeScreen" />
   </div>
 </template>
@@ -108,5 +112,8 @@ defineExpose({
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+.back-button {
+  z-index: 9999; /* más alto que cualquier imagen */
 }
 </style>

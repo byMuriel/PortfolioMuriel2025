@@ -31,13 +31,13 @@ const goBack = (route) => {
   left: 0.3rem;
 }
 .back-icon {
-  font-size: 2.2rem;
-  text-shadow: 0.1rem 0.1rem 0.8rem rgba(0, 0, 0, 0.9);
+  font-size: 2.5rem;
+  text-shadow: 0.1rem 0.1rem 0.1rem rgba(0, 0, 0, 0.9);
   color: white;
   pointer-events: all;
   cursor: pointer;
 }
 .back-icon:hover {
-  font-size: 2.3rem;
+  font-size: 2.6rem;
 }
 </style>

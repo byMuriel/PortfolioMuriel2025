@@ -1,3 +1,9 @@
 {
-  "About me": "Hello! I'm Muriel Vitale, a civil engineer with a passion for programming. Combining my academic background with studies in web development at MasterD, I have built a strong foundation of knowledge and skills in the field.\n\nIn addition to my technical abilities, I possess solid interpersonal skills. I excel in effective communication, enabling me to collaborate efficiently within teams and creatively and efficiently solve problems. One of my key strengths lies in my constant pursuit of learning. I'm always eager to acquire new knowledge and stay up-to-date with the latest technologies and practices in web development.\n\nIn summary, as a civil engineer turned full-stack programmer, I bring a unique combination of technical skills and the ability to approach challenges from different perspectives.I am excited to join a team where I can apply my knowledge, contribute collaboratively, and continue to grow professionally!"
+  "intro": "I'm Muriel Vitale",
+  "AboutMe": {
+    "0": "I'm a civil engineer with a passion for programming. Combining my academic background with studies in development, I have built a strong foundation of knowledge and skills in the field. In addition to my technical abilities, I possess solid interpersonal skills.",
+    "1": "I excel in effective communication, enabling me to collaborate efficiently within teams and creatively and efficiently solve problems. One of my key strengths lies in my constant pursuit of learning. I'm always eager to acquire new knowledge and stay up-to-date with the latest technologies and practices in web development.",
+    "2": "In summary, as a civil engineer turned full-stack programmer, I bring a unique combination of technical skills and the ability to approach challenges from different perspectives.I am excited to join a team where I can apply my knowledge, contribute collaboratively, and continue to grow professionally!"
+  },
+  "img": "/src/assets/images/aboutMeImg.png"
 }

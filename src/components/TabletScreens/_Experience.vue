@@ -2,16 +2,25 @@
 <template>
   <div class="container-fluid ExperienceApplication m-0 p-0">
     <div class="containerExperience">
-      <div v-for="(experience, index) in ExperienceLogo" :key="index" class="mt-5 mb-3 skillCard">
+      <div class="m-1">
+        <p class="text-dark tittle">Experience</p>
+      </div>
+
+      <div
+        v-for="(experience, index) in ExperienceLogo"
+        :key="index"
+        class="m-0 p-2 mb-3 skillCard"
+      >
         <div class="container-fluid d-flex justify-content-between align-items-center">
           <div class="me-2"><img :src="experience.logo" class="tamanioLogo" /></div>
+
           <div class="text-end">
-            <p class="text-light m-0 titleSpecificSkill">{{ experience.name }}</p>
-            <p class="text-light m-0">{{ experience.position }}</p>
+            <p class="text-dark m-0 titleSpecificSkill">{{ experience.name }}</p>
+            <p class="text-dark m-0">{{ experience.position }}</p>
           </div>
         </div>
-        <p class="text-light">{{ experience.initDate }} - {{ experience.finalDate }}</p>
-        <p class="text-light whiteSpace-text">{{ experience.functions }}</p>
+        <p class="text-dark">{{ experience.initDate }} - {{ experience.finalDate }}</p>
+        <p class="text-dark whiteSpace-text">{{ experience.functions }}</p>
         <a class="text-anchor" target="_blank" rel="noopener noreferrer" :href="experience.link">{{
           experience.link
         }}</a>
@@ -62,15 +71,15 @@ onMounted(() => {})
   pointer-events: auto;
   width: 100%;
   height: 100%;
+  background-size: cover;
+  background-position: center;
   display: flex;
   flex-direction: column;
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  /* background-color: rgb(71, 70, 70); */
-  background-color: rgb(165, 163, 163);
+  background-color: rgb(25, 219, 245);
   box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
-  overflow: auto;
 }
 .containerExperience {
   padding: 1rem;
@@ -79,40 +88,25 @@ onMounted(() => {})
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  overflow: auto;
+  overflow: scroll;
 }
 .tittle {
   font-size: 1.5rem;
 }
-.skillCard {
-  width: 95%;
-  margin: 0;
-  padding: 0.75rem;
-  background: rgb(43, 42, 42);
-  border-radius: 0.75rem;
-  border: 1px solid transparent;
-  transition: border-color 0.2s ease;
-  padding-left: 2rem;
-  padding-right: 3rem;
+.circulo {
+  border-radius: 30%;
+  width: 4rem;
 }
-.skillCard:hover {
-  border-color: rgb(48, 47, 47);
+.skillCard {
+  background: rgba(250, 249, 249, 0.6);
+  border-radius: 1rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 .titleSpecificSkill {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: bold;
 }
 .tamanioLogo {
-  width: 12rem;
-  height: 100%;
-  object-fit: contain;
-}
-.text-anchor {
-  font-size: 0.8rem;
-  color: rgb(131, 130, 130);
-  text-decoration: none;
-}
-.tittle {
-  font-size: 1.5rem;
+  width: 5.5rem;
 }
 </style>
