@@ -40,7 +40,8 @@
     >
       <div class="container-fluid d-flex justify-content-between m-0 p-0">
         <img
-          :src="rawProjects.image[0]"
+          v-if="firstImageOf(rawProjects)"
+          :src="firstImageOf(rawProjects)"
           alt="Project image"
           class="secondImg selectHover m-0 p-0"
           @click="replacePrincipal(rawProjects.originalIndex)"
@@ -74,61 +75,162 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
-import { defineEmits } from 'vue'
+<script setup lang="ts">
+/*****************************************************************************************
+ * MODULE: Projects Screen Logic
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: State, computed properties, and controls for the Projects screen.
+ *              - Handles current project and image carousel.
+ *              - Exposes DOM readiness for Three.js projection.
+ * ***************************************************************************************
+ * MÓDULO: Lógica de la pantalla de Proyectos
+ * AUTORA: Muriel Vitale.
+ * DESCRIPCIÓN: Estado, computados y controles para la pantalla de Proyectos.
+ *              - Maneja proyecto actual y carrusel de imágenes.
+ *              - Expone "DOM readiness" para proyección en Three.js.
+ *****************************************************************************************/
+
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import rawProjects from '@/data/projects.json'
 
-let intervalId
+interface Project {
+  image: string[] | Record<string, string>
+  logo?: string
+  name?: string
+  description?: string
+  link?: string
+  githubRep?: string
+  [key: string]: unknown
+}
+const AUTO_SLIDE_MS = 4000
+let intervalId: ReturnType<typeof setInterval> | null = null
+const projects: Project[] = Object.values(rawProjects as Record<string, Project>)
 
-const ProjectContent = Object.values(rawProjects)
-const currentProjectIndex = ref(0)
-const currentImageIndex = ref(0)
+const currentProjectIndex = ref<number>(0)
+const currentImageIndex = ref<number>(0)
+const currentProject = computed<Project>(() => {
+  return projects[currentProjectIndex.value] ?? (projects[0] as Project)
+})
 
-const currentProject = computed(() => ProjectContent[currentProjectIndex.value])
-const currentImage = computed(() => currentProject.value.image[currentImageIndex.value])
+const images = computed<string[]>(() => {
+  const imgs = currentProject.value?.image
+  if (Array.isArray(imgs)) return imgs
+  return imgs ? Object.values(imgs) : []
+})
 
-const otherProjects = computed(() =>
-  ProjectContent.map((project, originalIndex) => ({ ...project, originalIndex })).filter(
-    (_, i) => i !== currentProjectIndex.value,
-  ),
+const currentImage = computed<string | undefined>(() => images.value[currentImageIndex.value])
+const otherProjects = computed<(Project & { originalIndex: number })[]>(() =>
+  projects
+    .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
+    .filter((_, i) => i !== currentProjectIndex.value),
 )
 
-const ExperienceLink = ref([])
-ExperienceLink.value = Object.values(ProjectContent).map((item) => ({
-  ...item,
-  logo: new URL(item.link, import.meta.url).href,
-}))
+type ProjectBase = Omit<Project, 'logo'>
+type ProjectWithLogo = ProjectBase & { logo: string | null }
 
-function replacePrincipal(index) {
-  console.log(index)
-  currentProjectIndex.value = index
+const projectLogos = computed<ProjectWithLogo[]>(() => {
+  return projects.map((p) => {
+    const { logo: rawLogo, ...rest } = p
+    const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
+    return { ...rest, logo: resolved }
+  })
+})
+
+const emit = defineEmits<{
+  (e: 'change-screen', to: 'Init' | string): void
+}>()
+
+/*****************************************************************************************
+ * FUNCTION: firstImageOf
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the first image URL of a project, handling array or object shapes.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Devuelve la primera URL de imagen de un proyecto, sea array u objeto.
+ *****************************************************************************************/
+function firstImageOf(p: Project): string | undefined {
+  const img = p.image
+  if (!img) return undefined
+  return Array.isArray(img) ? img[0] : Object.values(img)[0]
+}
+
+/*****************************************************************************************
+ * FUNCTION: replacePrincipal
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Switches the main project being displayed and resets the image index.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Cambia el proyecto principal mostrado y reinicia el índice de imagen.
+ *****************************************************************************************/
+function replacePrincipal(index: number): void {
+  if (index < 0 || index >= projects.length) return
   currentImageIndex.value = 0
-}
-function nextImage() {
-  const totalImages = Object.keys(currentProject.value.image).length
-  currentImageIndex.value = (currentImageIndex.value + 1) % totalImages
+  currentProjectIndex.value = index
 }
 
-const emit = defineEmits(['change-screen'])
-const goBack = (route) => {
+/*****************************************************************************************
+ * FUNCTION: nextImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Advances the carousel to the next image, looping at the end.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Avanza el carrusel a la siguiente imagen con loop al final.
+ *****************************************************************************************/
+function nextImage(): void {
+  const total = images.value.length
+  if (!total) return
+  currentImageIndex.value = (currentImageIndex.value + 1) % total
+}
+
+/*****************************************************************************************
+ * FUNCTION: goBack
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Emits a screen change event to return to the Init screen.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Emite el evento de cambio de pantalla para volver a Init.
+ *****************************************************************************************/
+function goBack(): void {
   emit('change-screen', 'Init')
 }
 
-const screen = ref(null)
-const domReady = new Promise((resolve) => {
-  onMounted(() => resolve())
+/*****************************************************************************************
+ * FUNCTION: startAutoSlide
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Starts the image auto-slide interval if not already running.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Inicia el intervalo de auto-desplazamiento de imágenes si no está activo.
+ *****************************************************************************************/
+function startAutoSlide(): void {
+  if (intervalId) return
+  intervalId = setInterval(nextImage, AUTO_SLIDE_MS)
+}
+
+/*****************************************************************************************
+ * FUNCTION: stopAutoSlide
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Stops and clears the image auto-slide interval.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Detiene y limpia el intervalo de auto-desplazamiento de imágenes.
+ *****************************************************************************************/
+function stopAutoSlide(): void {
+  if (!intervalId) return
+  clearInterval(intervalId)
+  intervalId = null
+}
+
+const screen = ref<HTMLElement | null>(null)
+
+const domReady: Promise<void> = new Promise((resolve) => {
+  onMounted(() => {
+    resolve()
+  })
 })
 
-defineExpose({
-  screen,
-  domReady,
-})
+defineExpose({ screen, domReady })
 
 onMounted(() => {
-  intervalId = setInterval(() => {
-    nextImage()
-  }, 3000) // 30 segundos
+  startAutoSlide()
+})
+
+onBeforeUnmount(() => {
+  stopAutoSlide()
 })
 </script>
 
@@ -199,7 +301,7 @@ onMounted(() => {
 }
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.6s ease;
+  transition: opacity 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {

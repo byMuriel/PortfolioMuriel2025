@@ -26,7 +26,11 @@
   </div>
 
   <!-- Tablet Screen -->
-  <div id="screen-overlay" class="overlay" :class="{ 'fade-in-screen': showTabletContent }">
+  <div
+    id="screen-overlay"
+    class="overlay overlay-shadow"
+    :class="{ 'fade-in-screen': showTabletContent }"
+  >
     <TabletContent v-if="showTabletContent" />
   </div>
 </template>
@@ -896,6 +900,8 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.overlay-shadow {
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
 }
 

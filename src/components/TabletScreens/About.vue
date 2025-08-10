@@ -1,47 +1,162 @@
 <!-- src/components/About.vue -->
 <template>
-  <div class="container-fluid aboutApplication m-0 p-0">
-    <!-- Encabezado como en Projects -->
-
-    <div class="containerAbout mt-5">
-      <!-- Hero de fotos -->
+  <div class="container-fluid aboutApplication aboutShadow m-0 p-0">
+    <div class="containerAbout mt-5 mb-5">
+      <!-- Head -->
       <div class="aboutHero">
-        <div class="aboutCard m-0 p-3">
-          <p :v-if="index = !0" class="text-color about-text text-center">
-            <span class="meeting1">HELLO! </span><br />
-            <span class="meeting2">{{ AboutContent.intro }}</span>
+        <img class="fondoAbout" src="/src/assets/images/AboutMe/fondo.jpg" alt="" />
+        <img class="murielImg" src="/src/assets/images/AboutMe/muriel.png" alt="" />
+        <h1 class="name m-0 p-0">
+          {{ AboutContent.intro }} <span class="font07rem">(She/Her)</span>
+        </h1>
+        <img
+          class="verificationImg m-0 p-0"
+          src="/src/assets/images/AboutMe/verification.png"
+          alt=""
+        />
+        <div class="decoratorPlus text-center align-content-center m-0 p-0">
+          <p class="plus">+</p>
+        </div>
+        <div class="initialData">
+          <p class="text-dark m-0 p-0 font07rem">{{ AboutContent.Experience }}</p>
+          <p class="m-0 p-0 font07rem" :style="{ color: '#969393' }">
+            {{ AboutContent.Ubication }}
           </p>
         </div>
-        <img class="murielImg" src="/src/assets/images/muriel.png" alt="" />
+        <div class="tags m-0 p-0">
+          <p class="text-dark m-0 ps-3 pe-3">
+            {{ AboutContent.Position }}
+            <span v-for="(skill, index) in AboutContent.Skills">{{ skill }}</span>
+          </p>
+        </div>
       </div>
 
       <!-- Párrafos -->
-      <div
-        v-for="(parraph, index) in AboutContent.AboutMe"
+      <!-- <div
+        class="aboutCard m-0 p-2"
+        v-for="(title, index) in AboutContent.AboutMeTittles"
         :key="index"
-        class="aboutCard m-0 p-3 mb-3"
       >
-        <p :v-if="index = !0" class="text-color about-text">{{ parraph }}</p>
+        <div class="">
+          <h5 class="text-dark m-0 p-0 pb-1">
+            {{ title }}
+          </h5>
+          <p class="about-text" v-if="more">{{ AboutContent.AboutMe[index] }}</p>
+          <span class="pill" v-if="!more" @click="ShowHide('show')">See More</span>
+        </div>
+        <span class="pill" v-if="more" @click="ShowHide('hide')">See Less</span>
+      </div> -->
+      <div class="aboutCard m-0 p-2" v-for="(title, index) in titles" :key="index">
+        <div>
+          <h5 class="text-dark m-0 p-0 pb-1">{{ title }}</h5>
+
+          <p class="about-text" v-if="expanded[index]">
+            {{ paragraphs[index] }}
+          </p>
+
+          <span class="pill" v-if="!expanded[index]" @click="showSection(index)">See More</span>
+        </div>
+
+        <span class="pill" v-if="expanded[index]" @click="hideSection(index)">See Less</span>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { defineEmits } from 'vue'
+<script setup lang="ts">
+/*****************************************************************************************
+ * MODULE: About Screen Logic
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: State and actions for the About screen:
+ *              - Manages expandable sections (accordion-like).
+ *              - Exposes DOM readiness for Three.js projection.
+ * ***************************************************************************************
+ * MÓDULO: Lógica de la pantalla About
+ * AUTORA: Muriel Vitale.
+ * DESCRIPCIÓN: Estado y acciones de About:
+ *              - Maneja secciones expandibles (tipo acordeón).
+ *              - Expone "DOM readiness" para proyección con Three.js.
+ *****************************************************************************************/
+
+import { ref, computed, onMounted } from 'vue'
 import AboutContent from '@/data/about.json'
 
-const aboutImg = new URL(AboutContent.img, import.meta.url).href
-
 const emit = defineEmits(['change-screen'])
-const goBack = (route) => {
+const screen = ref(null)
+const more = ref(false)
+const expanded = ref<boolean[]>([])
+const titles = computed(() => Object.values(AboutContent.AboutMeTittles || {}))
+const paragraphs = computed(() => Object.values(AboutContent.AboutMe || {}))
+
+/*****************************************************************************************
+ * FUNCTION: goBack
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Emits a screen change event to return to the Init screen.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Emite el evento para volver a la pantalla Init.
+ *****************************************************************************************/
+function goBack() {
   emit('change-screen', 'Init')
 }
 
-const screen = ref(null)
-const domReady = new Promise((resolve) => {
+/*****************************************************************************************
+ * FUNCTION: setMore
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Sets the "more" flag to show or hide extra content.
+ *              - Accepts a boolean value.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Ajusta la bandera "more" para mostrar u ocultar contenido extra.
+ *              - Recibe un booleano.
+ *****************************************************************************************/
+function setMore(value: boolean) {
+  more.value = !!value
+}
+
+/*****************************************************************************************
+ * FUNCTION: showSection
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Expands a specific section by index.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Expande una sección específica por índice.
+ *****************************************************************************************/
+function showSection(i: number) {
+  if (i < 0 || i >= expanded.value.length) return
+  expanded.value[i] = true
+}
+
+/*****************************************************************************************
+ * FUNCTION: hideSection
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Collapses a specific section by index.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Colapsa una sección específica por índice.
+ *****************************************************************************************/
+function hideSection(i: number) {
+  if (i < 0 || i >= expanded.value.length) return
+  expanded.value[i] = false
+}
+
+/*****************************************************************************************
+ * FUNCTION: toggleSection
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Toggles a specific section by index.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Alterna (abre/cierra) una sección por índice.
+ *****************************************************************************************/
+function toggleSection(i: number) {
+  if (i < 0 || i >= expanded.value.length) return
+  expanded.value[i] = !expanded.value[i]
+}
+
+/** DOM readiness expuesto al padre (Three.js) */
+const domReady = new Promise<void>((resolve) => {
   onMounted(() => resolve())
+})
+
+onMounted(() => {
+  // Inicializa el acordeón con todas cerradas excepto la primera
+  expanded.value = Array(titles.value.length).fill(false)
+  if (expanded.value.length > 0) expanded.value[0] = true
 })
 
 defineExpose({
@@ -52,6 +167,7 @@ defineExpose({
 
 <style scoped>
 .aboutApplication {
+  position: relative;
   pointer-events: auto;
   width: 100%;
   height: 100%;
@@ -60,79 +176,125 @@ defineExpose({
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  /* background-color: rgb(71, 70, 70); */
-  background-color: rgb(228, 227, 227);
-  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
-  overflow: auto;
+  background-color: rgb(238, 235, 235);
+  overflow: hidden;
 }
-.meeting1 {
-  color: rgb(165, 42, 165);
-  font-size: 3.5rem;
-  font-weight: bolder;
-  text-shadow: 0.1rem 0.1rem 0.1rem rgba(245, 194, 220, 0.582);
-}
-.meeting2 {
-  color: rgb(7, 166, 194);
-  font-size: 1.39rem;
-  font-weight: bolder;
-  text-shadow: 0.1rem 0.1rem 0.1rem rgba(245, 194, 220, 0.582);
-}
-.containerPrinc {
-  width: 100%;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  background-color: rgb(51, 50, 50);
+.aboutApplication::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  pointer-events: none;
 }
 .containerAbout {
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   align-items: center;
-}
-.text-color {
-  color: rgba(77, 77, 77, 0.86);
-  font-family: 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-}
-
-.aboutHero {
   width: 100%;
-  display: grid;
-  grid-template-columns: 2fr 2fr;
-  gap: 0.2rem;
-  align-items: center;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-@media (max-width: 768px) {
-  .aboutHero {
-    grid-template-columns: 1fr;
-  }
+.aboutHero {
+  width: 95%;
+  height: 19rem;
+  background-color: rgb(255, 255, 255);
+  margin-left: 1rem;
+  margin-right: 1rem;
+  border-radius: 0.5rem;
 }
-
+.fondoAbout {
+  width: 100%;
+  height: 8rem;
+  z-index: 2;
+}
 .murielImg {
   width: 10rem;
   height: 10rem;
   object-fit: cover;
-  border-radius: 1rem; /* más pro que círculo duro */
+  border-radius: 50%;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   justify-self: start;
-  margin-right: 1rem;
-}
-@media (max-width: 768px) {
-  .murielImg {
-    justify-self: center;
-  }
-}
 
+  position: relative;
+  top: -6rem;
+}
+.decoratorPlus {
+  position: relative;
+  top: -12rem;
+  left: 7.5rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  background-color: rgb(64, 122, 231);
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 0.28rem solid white;
+}
+.plus {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  top: -0.25rem;
+  font-size: 1.5rem;
+}
+.name {
+  position: relative;
+  left: 11rem;
+  top: -9.5rem;
+  color: black;
+  font-size: 1.4rem;
+  font-weight: 500;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.verificationImg {
+  position: relative;
+  top: -11.1rem;
+  left: 22.5rem;
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.initialData {
+  position: relative;
+  top: -13rem;
+  left: 11rem;
+}
+.tags {
+  position: relative;
+  top: -12rem;
+}
+.font07rem {
+  font-size: 0.7rem;
+}
+.pill {
+  border: 0.1rem solid rgb(64, 122, 231);
+  border-radius: 5rem;
+  color: rgb(64, 122, 231);
+  width: fit-content;
+  height: fit-content;
+  margin: 0;
+  padding: 0.3rem 1.5rem;
+  font-size: 0.8rem;
+  position: relative;
+  left: 17rem;
+}
+.pill:hover {
+  background: rgba(64, 122, 231, 0.1);
+  cursor: pointer;
+}
 .aboutCard {
-  width: 100%;
-  /* background: rgb(252, 252, 252); */
-
-  border-radius: 0.75rem;
+  width: 95%;
+  background-color: rgb(255, 255, 255);
+  margin-left: 1rem;
+  margin-right: 1rem;
+  border-radius: 0.5rem;
 }
-
 .about-text {
   white-space: pre-line;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  color: rgba(39, 39, 39, 0.86);
+  font-family: Arial, sans-serif;
 }
 </style>

@@ -32,7 +32,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 /*****************************************************************************************
  * SCRIPT SETUP: TabletScreens/Init.vue
  * AUTHOR: Muriel Vitale.
@@ -70,7 +70,7 @@ const currentDate = ref('')
  *              - Soporta los siguientes valores de ruta: "skills", "experience", "about",
  *                "projects", "contact" y "blog".
  *****************************************************************************************/
-const goTo = (route) => {
+const goTo = (route: string) => {
   if (route === 'skills') {
     emit('change-screen', 'Skills')
   } else if (route === 'experience') {
@@ -167,7 +167,7 @@ const updateDate = () => {
   currentDate.value = `${dayName}, ${dayNumber} ${monthName}`
 }
 
-let timer = null
+let timer: ReturnType<typeof setInterval> | null = null
 
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
@@ -183,7 +183,7 @@ let timer = null
 onMounted(() => {
   updateTime()
   updateDate()
-  timer = setInterval(updateTime, 1000 * 60)
+  timer = window.setInterval(updateTime, 60_000)
 })
 
 /*****************************************************************************************
@@ -198,7 +198,10 @@ onMounted(() => {
  *              - Previene fugas de memoria por temporizadores activos.
  *****************************************************************************************/
 onBeforeUnmount(() => {
-  clearInterval(timer)
+  if (timer !== null) {
+    clearInterval(timer)
+    timer = null
+  }
 })
 </script>
 
@@ -215,7 +218,7 @@ onBeforeUnmount(() => {
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
+  /* box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8); */
 }
 .clock-container {
   width: 18rem;

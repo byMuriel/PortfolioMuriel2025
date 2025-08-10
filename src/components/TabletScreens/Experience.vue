@@ -20,38 +20,94 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { defineEmits } from 'vue'
+<script setup lang="ts">
+/*****************************************************************************************
+ * MODULE: Experience Screen Logic
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Loads experience items from JSON, resolves asset URLs for logos,
+ *              and exposes DOM readiness for projection with Three.js.
+ * ***************************************************************************************
+ * MÓDULO: Lógica de la pantalla Experience
+ * AUTORA: Muriel Vitale.
+ * DESCRIPCIÓN: Carga items desde el JSON, resuelve URLs de logos,
+ *              y expone el DOM listo para proyección con Three.js.
+ *****************************************************************************************/
+
+import { ref, computed, onMounted } from 'vue'
 import ExperienceContent from '@/data/experience.json'
 
-const ExperienceLogo = ref([])
-ExperienceLogo.value = Object.values(ExperienceContent).map((item) => ({
-  ...item,
-  logo: new URL(item.logo, import.meta.url).href,
-}))
-const ExperienceLink = ref([])
-ExperienceLink.value = Object.values(ExperienceContent).map((item) => ({
-  ...item,
-  logo: new URL(item.link, import.meta.url).href,
-}))
+/** ===================== Tipos ===================== */
+interface ExperienceRaw {
+  name: string
+  position: string
+  initDate: string
+  finalDate: string
+  functions: string
+  link: string // puede ser http(s) o ruta a asset
+  logo: string // ruta a asset (png/svg/jpg)
+  [key: string]: unknown
+}
 
-const emit = defineEmits(['change-screen'])
-const goBack = (route) => {
+interface ExperienceResolved {
+  name: string
+  position: string
+  initDate: string
+  finalDate: string
+  functions: string
+  link: string // url final (http o asset resuelto)
+  logo: string // url final de logo (asset resuelto)
+}
+
+/** ===================== Utils ===================== */
+/*****************************************************************************************
+ * FUNCTION: resolveMaybeAsset
+ * DESCRIPTION: If `path` is an http(s) URL, returns it as-is. Otherwise resolves it
+ *              relative to the project assets using import.meta.url.
+ * DESCRIPCIÓN: Si `path` es http(s), lo devuelve tal cual. Si no, lo resuelve como asset.
+ *****************************************************************************************/
+function resolveMaybeAsset(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path
+  return new URL(path, import.meta.url).href
+}
+
+/** ===================== Datos ===================== */
+// JSON → arreglo tipado
+const rawList: ExperienceRaw[] = Object.values(ExperienceContent as Record<string, ExperienceRaw>)
+
+/** Items resueltos (logo y link con URL final) */
+const ExperienceLogo = computed<ExperienceResolved[]>(() =>
+  rawList.map((item) => ({
+    name: item.name,
+    position: item.position,
+    initDate: item.initDate,
+    finalDate: item.finalDate,
+    functions: item.functions,
+    link: resolveMaybeAsset(item.link),
+    logo: resolveMaybeAsset(item.logo),
+  })),
+)
+
+/** ===================== Emits ===================== */
+const emit = defineEmits<{
+  (e: 'change-screen', to: 'Init' | string): void
+}>()
+
+/*****************************************************************************************
+ * FUNCTION: goBack
+ * DESCRIPTION: Emits a screen change event to return to the Init screen.
+ * DESCRIPCIÓN: Emite el evento para volver a la pantalla Init.
+ *****************************************************************************************/
+function goBack(): void {
   emit('change-screen', 'Init')
 }
 
-const screen = ref(null)
-const domReady = new Promise((resolve) => {
+/** ===================== Expuestos al padre (Three.js) ===================== */
+const screen = ref<HTMLElement | null>(null)
+const domReady: Promise<void> = new Promise((resolve) => {
   onMounted(() => resolve())
 })
 
-defineExpose({
-  screen,
-  domReady,
-})
-
-onMounted(() => {})
+defineExpose({ screen, domReady })
 </script>
 
 <style scoped>
