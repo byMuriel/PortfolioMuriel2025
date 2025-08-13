@@ -35,50 +35,54 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { ref, onMounted, onBeforeUnmount, createApp } from 'vue'
 import TabletContent from './TabletContent.vue'
 import skyTexture from '@/assets/textures/sky.png'
 
-const isLoading = ref(true)
-const showPreloader = ref(true)
-const startContainer = ref(true)
-const container = ref(null)
-const showTabletContent = ref(false)
+const isLoading = ref<boolean>(true)
+const showPreloader = ref<boolean>(true)
+const startContainer = ref<boolean>(true)
+const container = ref<HTMLDivElement | null>(null)
+const showTabletContent = ref<boolean>(false)
 
-let renderer, scene, camera, animationId
-let screenMaterial
-let screen = null
-let overlayShown = false
+let renderer!: THREE.WebGLRenderer
+let scene!: THREE.Scene
+let camera!: THREE.PerspectiveCamera
+
+let animationId: number | undefined
+let screenMaterial: THREE.MeshBasicMaterial | null = null
+type ScreenMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>
+let screen: THREE.Mesh<RoundedBoxGeometry, THREE.MeshBasicMaterial> | null = null
+let overlayShown: boolean = false
 const tabletGroup = new THREE.Group()
 
 // Dimensions and properties of the tablet / Dimensiones y propiedades de la tablet
-const outerWidth = 8
-const outerHeight = 12
-const depthMarco = 0.2
-const depthBase = 0.6
-const horizontalThickness = 1.5 // top/bottom
-const verticalThickness = 0.3
-const thickness = 0.3
-const screenWidth = outerWidth - thickness * 2
-const screenHeight = outerHeight - 2 - thickness * 2
+const outerWidth: number = 8
+const outerHeight: number = 12
+const depthMarco: number = 0.2
+const depthBase: number = 0.6
+const horizontalThickness: number = 1.5 // top/bottom
+const verticalThickness: number = 0.3
+const thickness: number = 0.3
+const screenWidth: number = outerWidth - thickness * 2
+const screenHeight: number = outerHeight - 2 - thickness * 2
 
 // Light variables / Variables de luz
-let leftLight, centerLight, rightLight
-const colorYellow = new THREE.Color(0xffc003) // Color amarillo
-const colorWhite = new THREE.Color(0xfffcfe)
-const colorCian = new THREE.Color(0x03eeff) // Color cian
-const colorPink = new THREE.Color(0xff03b8) // Color rosa
+let leftLight: THREE.SpotLight | null = null
+let centerLight: THREE.SpotLight | null = null
+let rightLight: THREE.SpotLight | null = null
+const colorWhite: THREE.ColorRepresentation = 0xfffcfe
 
 // Variables para la animación
 const startPos = new THREE.Vector3(-15, 30, 30) // Posición inicial
 const endPos = new THREE.Vector3(0, 0, 20) // Posición final
-const startFov = 75 // FOV inicial
-const endFov = 35 // FOV final
-let startTime = null
-let rotationStartedAt = null
+const startFov: number = 75 // FOV inicial
+const endFov: number = 35 // FOV final
+let startTime: number | null = null
+let rotationStartedAt: number | null = null
 
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
@@ -96,13 +100,12 @@ let rotationStartedAt = null
  *              - Establecer `isLoading` en falso.
  *              - Establecer `showPreloader` en falso.
  *****************************************************************************************/
-onMounted(() => {
-  window.addEventListener('load', () => {
-    // setTimeout(() => {
+onMounted((): void => {
+  const onLoad = () => {
     isLoading.value = false
     showPreloader.value = false
-    // }, 500)
-  })
+  }
+  window.addEventListener('load', onLoad, { once: true })
 })
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
@@ -120,12 +123,12 @@ onMounted(() => {
  *              - Libera los recursos del renderizador con `renderer.dispose()`.
  *              - Elimina el canvas WebGL del DOM si fue añadido.
  *****************************************************************************************/
-onBeforeUnmount(() => {
-  // window.removeEventListener('keydown', handleKeyDown)
-  cancelAnimationFrame(animationId)
-  renderer.dispose()
-  if (container.value) {
-    container.value.removeChild(renderer.domElement)
+onBeforeUnmount((): void => {
+  if (animationId !== undefined) cancelAnimationFrame(animationId)
+  renderer?.dispose()
+  const el = container.value
+  if (el && renderer?.domElement && renderer.domElement.parentElement === el) {
+    el.removeChild(renderer.domElement)
   }
 })
 /*****************************************************************************************
@@ -138,7 +141,7 @@ onBeforeUnmount(() => {
  *              - Establece `showPreloader` en falso para ocultar completamente el preloader
  *                después de su salida.
  *****************************************************************************************/
-function onPreloaderLeave() {
+function onPreloaderLeave(): void {
   showPreloader.value = false
 }
 /*****************************************************************************************
@@ -166,7 +169,7 @@ function onPreloaderLeave() {
  *              - Renderiza el primer fotograma.
  *              - Inicia el bucle de animación con `requestAnimationFrame(startAnimation)`.
  *****************************************************************************************/
-function start() {
+function start(): void {
   startContainer.value = false
   startTime = null
   rotationStartedAt = null
@@ -198,24 +201,28 @@ function start() {
  *              - Establece configuraciones del renderer como tamaño y color de fondo.
  *              - Añade el canvas del renderer al contenedor en el DOM.
  *****************************************************************************************/
-function initScene() {
+function initScene(): void {
   // Create scene / Crear escena
-  const width = window.innerWidth
-  const height = window.innerHeight
   scene = new THREE.Scene()
+  const width: number = window.innerWidth
+  const height: number = window.innerHeight
 
   // Camera / Cámara
   camera = new THREE.PerspectiveCamera(startFov, width / height, 0.1, 100)
   // camera.position.set(0, 0, 20)
   camera.position.set(-15, 30, 30)
 
+  if (!container.value) {
+    throw new Error('initScene: container no está montado')
+  }
+
   // Renderer / Renderizador
-  const colorFondo = '#000000' // gris oscuro '#222222' // blanco 0xffffff
+  const colorFondo: string = '#000000' // gris oscuro '#222222' // blanco 0xffffff
   renderer = new THREE.WebGLRenderer({
     antialias: true,
     preserveDrawingBuffer: true, // activa para mantener el buffer
   })
-  renderer.physicallyCorrectLights = true
+
   renderer.setSize(width, height)
   renderer.setClearColor(colorFondo)
   container.value.appendChild(renderer.domElement)
@@ -235,39 +242,44 @@ function initScene() {
  *              - Todos los elementos comparten el mismo color y dimensiones basadas en `roomSize` y `wallHeight`.
  *              - La habitación actúa como fondo o contenedor para el resto de los elementos 3D.
  *****************************************************************************************/
-function createRoomEnvironment() {
-  const roomSize = 100
-  const wallHeight = 100
-  const colorRoom = 0x126cfc //azul  0x6f25f7 // morado 0x25e2f7 // cian
+function createRoomEnvironment(): void {
+  const roomSize: number = 100
+  const wallHeight: number = 100
+  const colorRoom: number = 0x126cfc //azul  0x6f25f7 // morado 0x25e2f7 // cian
 
-  const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize)
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: colorRoom }) // 0x5043d9 }) // 0x6116c4 }) //
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+  const floorGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry(roomSize, roomSize)
+  const floorMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
+    color: colorRoom,
+  }) // 0x5043d9 }) // 0x6116c4 }) //
+  const floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    floorGeometry,
+    floorMaterial,
+  )
   floor.rotation.x = -Math.PI / 2
   floor.position.y = -7
   scene.add(floor)
 
-  const backWall = new THREE.Mesh(
+  const backWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
     new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: colorRoom }), //0x5043d9 }), //  0x6116c4 }),
+    new THREE.MeshStandardMaterial({ color: colorRoom }),
   )
   backWall.position.set(0, wallHeight / 2 - 7, -roomSize / 2)
   scene.add(backWall)
 
-  const frontWall = backWall.clone()
+  const frontWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = backWall.clone()
   frontWall.rotation.y = Math.PI
   frontWall.position.z = roomSize / 2
   scene.add(frontWall)
 
-  const rightWall = new THREE.Mesh(
+  const rightWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
     new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: colorRoom }), // 0x5043d9 }), //  0x6116c4 }),
+    new THREE.MeshStandardMaterial({ color: colorRoom }),
   )
   rightWall.rotation.y = -Math.PI / 2
   rightWall.position.set(roomSize / 2, wallHeight / 2 - 7, 0)
   scene.add(rightWall)
 
-  const leftWall = rightWall.clone()
+  const leftWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = rightWall.clone()
   leftWall.position.x = -roomSize / 2
   leftWall.rotation.y = Math.PI / 2
   scene.add(leftWall)
@@ -293,65 +305,95 @@ function createRoomEnvironment() {
  *              - Agrupa todos los componentes en `tabletGroup` y lo añade a la escena.
  *              - Ajusta la cámara para que apunte hacia la posición de la tablet.
  *****************************************************************************************/
-function createTablet() {
+function createTablet(): void {
   // Tablet frame / Marco de la Tablet
-  const frameMaterial = new THREE.MeshStandardMaterial({
+  const frameMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 0.8,
     roughness: 0.2,
   })
-  const horizontal = new RoundedBoxGeometry(
+  const horizontal: RoundedBoxGeometry = new RoundedBoxGeometry(
     outerWidth - 0.2,
     horizontalThickness - 0.2,
     depthMarco,
     5,
     0.3,
   )
-  const vertical = new RoundedBoxGeometry(
+  const vertical: RoundedBoxGeometry = new RoundedBoxGeometry(
     verticalThickness - 0.2,
     outerHeight - 0.2,
     depthMarco,
     5,
     0.3,
   )
-  const top = new THREE.Mesh(horizontal, frameMaterial)
+  const top: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    horizontal,
+    frameMaterial,
+  )
   top.position.y = outerHeight / 2 - horizontalThickness / 2
-  const bottom = new THREE.Mesh(horizontal, frameMaterial)
+
+  const bottom: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    horizontal,
+    frameMaterial,
+  )
   bottom.position.y = -(outerHeight / 2) + horizontalThickness / 2
-  const left = new THREE.Mesh(vertical, frameMaterial)
+
+  const left: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    vertical,
+    frameMaterial,
+  )
   left.position.x = -(outerWidth / 2) + verticalThickness / 2
-  const right = new THREE.Mesh(vertical, frameMaterial)
+
+  const right: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    vertical,
+    frameMaterial,
+  )
   right.position.x = outerWidth / 2 - verticalThickness / 2
+
   tabletGroup.add(top, bottom, left, right)
 
   // Back Cover / Tapa trasera
-  const backPlateGeometry = new RoundedBoxGeometry(outerWidth, outerHeight, depthBase, 5, 0.3)
-  const backPlateMaterial = new THREE.MeshStandardMaterial({
+  const backPlateGeometry: RoundedBoxGeometry = new RoundedBoxGeometry(
+    outerWidth,
+    outerHeight,
+    depthBase,
+    5,
+    0.3,
+  )
+  const backPlateMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 0.8,
     roughness: 0.2,
   })
-  const backPlate = new THREE.Mesh(backPlateGeometry, backPlateMaterial)
-  backPlate.position.z = -0.11 // - depthBase + depthMarco
+  const backPlate: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
+    backPlateGeometry,
+    backPlateMaterial,
+  )
+  backPlate.position.z = -0.11
   tabletGroup.add(backPlate)
 
   // Sunken screen / Pantalla hundida
-  const screenGeometry = new RoundedBoxGeometry(screenWidth, screenHeight, depthMarco, 5, 0.3)
+  const screenGeometry: RoundedBoxGeometry = new RoundedBoxGeometry(
+    screenWidth,
+    screenHeight,
+    depthMarco,
+    5,
+    0.3,
+  )
 
   screenMaterial = new THREE.MeshBasicMaterial({
-    color: 0x000000, //0xff0000,
-    // emissiveIntensity: 0.3,
+    color: 0x000000,
     reflectivity: 1,
     transparent: true,
     opacity: 0.7,
   })
   screen = new THREE.Mesh(screenGeometry, screenMaterial)
-  screen.position.z = 0.01 // slightly sunken / ligeramente hundida
+  screen.position.z = 0.01
   tabletGroup.add(screen)
 
   // Target for spotlight so lights point to a specific place
   // Target del spotlight para que las luces apunten a un lugar especifico
-  const screenTarget = new THREE.Object3D()
+  const screenTarget: THREE.Object3D = new THREE.Object3D()
   screenTarget.position.copy(screen.position)
   tabletGroup.add(screenTarget)
 
@@ -379,15 +421,15 @@ function createTablet() {
  *              - Habilita el uso de mapas de sombras en el renderizador.
  *              - Permite que la tablet proyecte y reciba sombras.
  *****************************************************************************************/
-function addTopSpotLights() {
-  const xlight = 30 //50
-  const ylight = 30 // 50
-  const zlight = -20 // -40
-  const lightIntensity = 500 // 300
-  const lightDistance = 100
-  const lightAngle = Math.PI / 12 // / 2 // 22.5 degrees
-  const lightPenumbra = 0.2 // 1 // 0.2 // Suavizado de la luz
-  const lightDecay = 2 // 1 // Decaimiento de la luz
+function addTopSpotLights(): void {
+  const xlight: number = 30 //50
+  const ylight: number = 30 // 50
+  const zlight: number = -20 // -40
+  const lightIntensity: number = 500 // 300
+  const lightDistance: number = 100
+  const lightAngle: number = Math.PI / 12 // / 2 // 22.5 degrees
+  const lightPenumbra: number = 0.2 // 1 // 0.2 // Suavizado de la luz
+  const lightDecay: number = 2 // 1 // Decaimiento de la luz
 
   leftLight = new THREE.SpotLight(
     colorWhite,
@@ -507,8 +549,8 @@ function addTopSpotLights() {
  *              - Aplica una rotación completa de 360° (2π radianes) de forma progresiva a medida que `t` aumenta.
  *              - Asegura que la rotación no exceda una vuelta completa limitando `t` a un máximo de 1.
  *****************************************************************************************/
-function animateTabletRotation(elapsedTime, durationRotation) {
-  const t = Math.min(elapsedTime / durationRotation, 1)
+function animateTabletRotation(elapsedTime: number, durationRotation: number): void {
+  const t: number = Math.min(elapsedTime / durationRotation, 1)
   tabletGroup.rotation.y = Math.PI * 2 * t
 }
 /*****************************************************************************************
@@ -540,8 +582,8 @@ function animateTabletRotation(elapsedTime, durationRotation) {
  *   - delay (Número): Tiempo de espera antes de iniciar la animación de zoom.
  *   - durationCameraZoom (Número): Duración total de la fase de acercamiento, en segundos.
  *****************************************************************************************/
-function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
-  const cameraElapsedTime = elapsedTime - delay
+function animateCameraZoom(elapsedTime: number, delay: number, durationCameraZoom: number): void {
+  const cameraElapsedTime: number = elapsedTime - delay
 
   if (cameraElapsedTime < 0) return
 
@@ -574,20 +616,20 @@ function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
  *              - Calcula las coordenadas en píxeles y dimensiones del área proyectada.
  *              - Actualiza los estilos CSS del overlay para que coincidan con la pantalla 3D.
  *****************************************************************************************/
-function updateOverlayPosition() {
-  if (!screen) return
+function updateOverlayPosition(): void {
+  if (!screen || !camera || !renderer) return
 
-  const vector = new THREE.Vector3()
+  const vector: THREE.Vector3 = new THREE.Vector3()
   vector.setFromMatrixPosition(screen.matrixWorld)
   vector.project(camera)
 
-  const widthHalf = renderer.domElement.clientWidth / 2
-  const heightHalf = renderer.domElement.clientHeight / 2
+  const widthHalf: number = renderer.domElement.clientWidth / 2
+  const heightHalf: number = renderer.domElement.clientHeight / 2
 
   // Puntos extremos en el espacio local del mesh
-  const center = new THREE.Vector3(0, 0, 0)
-  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
-  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
+  const center: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+  const topLeft: THREE.Vector3 = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
+  const bottomRight: THREE.Vector3 = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
 
   // Convertir a coordenadas mundiales
   screen.updateMatrixWorld()
@@ -600,25 +642,25 @@ function updateOverlayPosition() {
   topLeft.project(camera)
   bottomRight.project(camera)
 
-  const centerX = center.x * widthHalf + widthHalf
-  const centerY = -center.y * heightHalf + heightHalf
+  const centerX: number = center.x * widthHalf + widthHalf
+  const centerY: number = -center.y * heightHalf + heightHalf
 
-  const x1 = topLeft.x * widthHalf + widthHalf
-  const y1 = -topLeft.y * heightHalf + heightHalf
+  const x1: number = topLeft.x * widthHalf + widthHalf
+  const y1: number = -topLeft.y * heightHalf + heightHalf
 
-  const x2 = bottomRight.x * widthHalf + widthHalf
-  const y2 = -bottomRight.y * heightHalf + heightHalf
+  const x2: number = bottomRight.x * widthHalf + widthHalf
+  const y2: number = -bottomRight.y * heightHalf + heightHalf
 
-  const pixelWidth = Math.abs(x2 - x1) - 5
-  const pixelHeight = Math.abs(y2 - y1) - 5
+  const margin: number = 5
+  const pixelWidth: number = Math.abs(x2 - x1) - margin
+  const pixelHeight: number = Math.abs(y2 - y1) - margin
 
-  const overlay = document.getElementById('screen-overlay')
+  const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
   if (overlay) {
     overlay.style.left = `${centerX}px`
     overlay.style.top = `${centerY}px`
     overlay.style.width = `${pixelWidth}px`
     overlay.style.height = `${pixelHeight}px`
-    // overlay.style.transform = 'translate(-50%, -50%)'
   }
 
   // if (screenWidth <= 480) {
@@ -660,20 +702,24 @@ function updateOverlayPosition() {
  *   - `overlayShown` evita múltiples actualizaciones del overlay.
  *   - `recorteTiempoParaMostrarLaPantalla` es un recorte de tiempo para adelantar el contenido ligeramente.
  *****************************************************************************************/
-function startAnimation(time) {
+function startAnimation(time: DOMHighResTimeStamp): void {
   if (startTime === null) startTime = time
 
-  const elapsedTime = (time - startTime) / 1000
-  const durationRotation = 2.5
-  const durationCameraZoom = 1.8
-  const totalDuration = durationRotation + durationCameraZoom
-  const recorteTiempoParaMostrarLaPantalla = 1.7
+  const elapsedTime: number = (time - startTime) / 1000
+  const durationRotation: number = 2.5
+  const durationCameraZoom: number = 1.8
+  const totalDuration: number = durationRotation + durationCameraZoom
+  const recorteTiempoParaMostrarLaPantalla: number = 1.7
 
   animateTabletRotation(elapsedTime, durationRotation)
 
   if (rotationStartedAt === null) rotationStartedAt = elapsedTime
   animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom)
 
+  if (!renderer || !scene || !camera) {
+    animationId = requestAnimationFrame(startAnimation)
+    return
+  }
   renderer.render(scene, camera)
 
   if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {

@@ -76,69 +76,138 @@
 </template>
 
 <script setup lang="ts">
-/*****************************************************************************************
- * MODULE: Projects Screen Logic
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: State, computed properties, and controls for the Projects screen.
- *              - Handles current project and image carousel.
- *              - Exposes DOM readiness for Three.js projection.
- * ***************************************************************************************
- * MÓDULO: Lógica de la pantalla de Proyectos
- * AUTORA: Muriel Vitale.
- * DESCRIPCIÓN: Estado, computados y controles para la pantalla de Proyectos.
- *              - Maneja proyecto actual y carrusel de imágenes.
- *              - Expone "DOM readiness" para proyección en Three.js.
- *****************************************************************************************/
-
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
 import rawProjects from '@/data/projects.json'
 
+type ImageField = string[] | Record<string, string> | undefined
+
 interface Project {
-  image: string[] | Record<string, string>
-  logo?: string
+  image?: ImageField
+  logo?: string | null
   name?: string
   description?: string
   link?: string
   githubRep?: string
   [key: string]: unknown
 }
-const AUTO_SLIDE_MS = 4000
+const defaultProject: Project = {
+  name: '',
+  description: '',
+  link: '#',
+  githubRep: '#',
+  image: [],
+  logo: null,
+}
+
+/*****************************************************************************************
+ * CONSTANT: AUTO_SLIDE_MS
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Interval (ms) for the auto-slide of project images.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Intervalo (ms) para el auto-desplazamiento de imágenes del proyecto.
+ *****************************************************************************************/
+const AUTO_SLIDE_MS: number = 4000
+
+/*****************************************************************************************
+ * VARIABLE: intervalId
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Holds the setInterval id for the auto-slide; null when stopped.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Guarda el id de setInterval del auto-slide; null cuando está detenido.
+ *****************************************************************************************/
 let intervalId: ReturnType<typeof setInterval> | null = null
+
+/*****************************************************************************************
+ * VARIABLE: projects
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Normalized list of projects loaded from JSON (object → array).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Lista normalizada de proyectos cargada desde el JSON (objeto → arreglo).
+ *****************************************************************************************/
 const projects: Project[] = Object.values(rawProjects as Record<string, Project>)
 
-const currentProjectIndex = ref<number>(0)
-const currentImageIndex = ref<number>(0)
-const currentProject = computed<Project>(() => {
-  return projects[currentProjectIndex.value] ?? (projects[0] as Project)
-})
+/*****************************************************************************************
+ * STATE: currentProjectIndex / currentImageIndex
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive indices for the selected project and its current image.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Índices reactivos del proyecto seleccionado y su imagen actual.
+ *****************************************************************************************/
 
-const images = computed<string[]>(() => {
+const currentProjectIndex: Ref<number> = ref(0)
+const currentImageIndex: Ref<number> = ref(0)
+
+/*****************************************************************************************
+ * COMPUTED: currentProject
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the active project (with a safe default if list is empty).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Retorna el proyecto activo (con un fallback seguro si la lista está vacía).
+ *****************************************************************************************/
+const currentProject: ComputedRef<Project> = computed(
+  () => projects[currentProjectIndex.value] ?? projects[0] ?? defaultProject,
+)
+
+/*****************************************************************************************
+ * COMPUTED: images
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Normalizes the project's `image` field into a string array (array or dict).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Normaliza el campo `image` del proyecto a un arreglo de strings (array o objeto).
+ *****************************************************************************************/
+const images: ComputedRef<string[]> = computed(() => {
   const imgs = currentProject.value?.image
-  if (Array.isArray(imgs)) return imgs
-  return imgs ? Object.values(imgs) : []
+  return Array.isArray(imgs) ? imgs : imgs ? Object.values(imgs) : []
 })
 
-const currentImage = computed<string | undefined>(() => images.value[currentImageIndex.value])
-const otherProjects = computed<(Project & { originalIndex: number })[]>(() =>
+/*****************************************************************************************
+ * COMPUTED: currentImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Current image URL for the active project, based on `currentImageIndex`.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: URL de la imagen actual del proyecto activo, según `currentImageIndex`.
+ *****************************************************************************************/
+const currentImage: ComputedRef<string | undefined> = computed(
+  () => images.value[currentImageIndex.value],
+)
+
+/*****************************************************************************************
+ * COMPUTED: otherProjects
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: List of projects excluding the active one, preserving original index.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Lista de proyectos excluyendo el activo, preservando el índice original.
+ *****************************************************************************************/
+const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = computed(() =>
   projects
     .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
     .filter((_, i) => i !== currentProjectIndex.value),
 )
 
+/*****************************************************************************************
+ * TYPES: ProjectBase / ProjectWithLogo
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Helper types to represent projects with a resolved `logo` URL (or null).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Tipos de ayuda para representar proyectos con `logo` resuelto (o null).
+ *****************************************************************************************/
 type ProjectBase = Omit<Project, 'logo'>
 type ProjectWithLogo = ProjectBase & { logo: string | null }
 
-const projectLogos = computed<ProjectWithLogo[]>(() => {
-  return projects.map((p) => {
+/*****************************************************************************************
+ * COMPUTED: projectLogos
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Projects with `logo` converted to an absolute asset URL (or null if missing).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Proyectos con `logo` convertido a URL absoluta de asset (o null si no existe).
+ *****************************************************************************************/
+const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
+  projects.map((p) => {
     const { logo: rawLogo, ...rest } = p
     const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
-    return { ...rest, logo: resolved }
-  })
-})
-
-const emit = defineEmits<{
-  (e: 'change-screen', to: 'Init' | string): void
-}>()
+    return { ...(rest as ProjectBase), logo: resolved }
+  }),
+)
 
 /*****************************************************************************************
  * FUNCTION: firstImageOf
@@ -180,17 +249,6 @@ function nextImage(): void {
 }
 
 /*****************************************************************************************
- * FUNCTION: goBack
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Emits a screen change event to return to the Init screen.
- * ***************************************************************************************
- * DESCRIPCIÓN: Emite el evento de cambio de pantalla para volver a Init.
- *****************************************************************************************/
-function goBack(): void {
-  emit('change-screen', 'Init')
-}
-
-/*****************************************************************************************
  * FUNCTION: startAutoSlide
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Starts the image auto-slide interval if not already running.
@@ -215,20 +273,55 @@ function stopAutoSlide(): void {
   intervalId = null
 }
 
+/*****************************************************************************************
+ * VARIABLE: screen
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive DOM reference for the projects screen container.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Referencia reactiva al contenedor DOM de la pantalla de proyectos.
+ *****************************************************************************************/
 const screen = ref<HTMLElement | null>(null)
 
+/*****************************************************************************************
+ * VARIABLE: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Resolves after mount to coordinate with parent (e.g., overlays).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Se resuelve tras el montaje para coordinar con el padre (p. ej., overlays).
+ *****************************************************************************************/
 const domReady: Promise<void> = new Promise((resolve) => {
   onMounted(() => {
     resolve()
   })
 })
 
+/*****************************************************************************************
+ * FUNCTION CALL: defineExpose
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Exposes `screen` and `domReady` to the parent component.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Expone `screen` y `domReady` al componente padre.
+ *****************************************************************************************/
 defineExpose({ screen, domReady })
 
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Starts the auto-slide timer when the component mounts.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Inicia el temporizador de auto-desplazamiento al montar el componente.
+ *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
 })
 
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onBeforeUnmount
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Stops and clears the auto-slide timer before component teardown.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Detiene y limpia el temporizador de auto-desplazamiento antes de destruir.
+ *****************************************************************************************/
 onBeforeUnmount(() => {
   stopAutoSlide()
 })

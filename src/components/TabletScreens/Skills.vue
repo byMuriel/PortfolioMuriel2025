@@ -20,33 +20,28 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { defineEmits } from 'vue'
+<script setup lang="ts">
+import { ref } from 'vue'
 import SkillsContent from '@/data/skills.json'
 
-const SkillsLogo = ref([])
-SkillsLogo.value = Object.values(SkillsContent).map((item) => ({
+type SkillJSON = { logo: string } & Record<string, unknown>
+
+const skillsRaw = SkillsContent as Record<string, SkillJSON>
+
+type SkillVM = SkillJSON & { logo: string }
+const SkillsLogo = ref<SkillVM[]>([])
+
+/*****************************************************************************************
+ * INITIALIZATION: SkillsLogo mapping
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Maps raw skills to the view-model, resolving the `logo` asset path.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Mapea las skills crudas al view-model, resolviendo la ruta del `logo`.
+ *****************************************************************************************/
+SkillsLogo.value = Object.values(skillsRaw).map((item) => ({
   ...item,
   logo: new URL(item.logo, import.meta.url).href,
 }))
-
-const emit = defineEmits(['change-screen'])
-const goBack = (route) => {
-  emit('change-screen', 'Init')
-}
-
-const screen = ref(null)
-const domReady = new Promise((resolve) => {
-  onMounted(() => resolve())
-})
-
-defineExpose({
-  screen,
-  domReady,
-})
-
-onMounted(() => {})
 </script>
 
 <style scoped>

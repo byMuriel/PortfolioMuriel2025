@@ -30,22 +30,6 @@
           </p>
         </div>
       </div>
-
-      <!-- Párrafos -->
-      <!-- <div
-        class="aboutCard m-0 p-2"
-        v-for="(title, index) in AboutContent.AboutMeTittles"
-        :key="index"
-      >
-        <div class="">
-          <h5 class="text-dark m-0 p-0 pb-1">
-            {{ title }}
-          </h5>
-          <p class="about-text" v-if="more">{{ AboutContent.AboutMe[index] }}</p>
-          <span class="pill" v-if="!more" @click="ShowHide('show')">See More</span>
-        </div>
-        <span class="pill" v-if="more" @click="ShowHide('hide')">See Less</span>
-      </div> -->
       <div class="aboutCard m-0 p-2" v-for="(title, index) in titles" :key="index">
         <div>
           <h5 class="text-dark m-0 p-0 pb-1">{{ title }}</h5>
@@ -64,40 +48,30 @@
 </template>
 
 <script setup lang="ts">
-/*****************************************************************************************
- * MODULE: About Screen Logic
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: State and actions for the About screen:
- *              - Manages expandable sections (accordion-like).
- *              - Exposes DOM readiness for Three.js projection.
- * ***************************************************************************************
- * MÓDULO: Lógica de la pantalla About
- * AUTORA: Muriel Vitale.
- * DESCRIPCIÓN: Estado y acciones de About:
- *              - Maneja secciones expandibles (tipo acordeón).
- *              - Expone "DOM readiness" para proyección con Three.js.
- *****************************************************************************************/
+import { ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
+import aboutData from '@/data/about.json'
 
-import { ref, computed, onMounted } from 'vue'
-import AboutContent from '@/data/about.json'
+type StringDict = Record<string, string>
+type MaybeList = string[] | StringDict | undefined
 
-const emit = defineEmits(['change-screen'])
-const screen = ref(null)
-const more = ref(false)
-const expanded = ref<boolean[]>([])
-const titles = computed(() => Object.values(AboutContent.AboutMeTittles || {}))
-const paragraphs = computed(() => Object.values(AboutContent.AboutMe || {}))
-
-/*****************************************************************************************
- * FUNCTION: goBack
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Emits a screen change event to return to the Init screen.
- * ***************************************************************************************
- * DESCRIPCIÓN: Emite el evento para volver a la pantalla Init.
- *****************************************************************************************/
-function goBack() {
-  emit('change-screen', 'Init')
+interface AboutContentShape {
+  intro: string
+  Experience: string
+  Ubication: string
+  Position: string
+  Skills: string[]
+  AboutMeTittles?: MaybeList
+  AboutMe?: MaybeList
 }
+
+const AboutContent = aboutData as AboutContentShape
+
+const screen = ref<HTMLDivElement | null>(null)
+const more = ref<boolean>(false)
+const expanded = ref<boolean[]>([])
+const toArray = (v: MaybeList): string[] => (Array.isArray(v) ? v : v ? Object.values(v) : [])
+const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.AboutMeTittles))
+const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.AboutMe))
 
 /*****************************************************************************************
  * FUNCTION: setMore
@@ -108,7 +82,7 @@ function goBack() {
  * DESCRIPCIÓN: Ajusta la bandera "more" para mostrar u ocultar contenido extra.
  *              - Recibe un booleano.
  *****************************************************************************************/
-function setMore(value: boolean) {
+function setMore(value: boolean): void {
   more.value = !!value
 }
 
@@ -119,7 +93,7 @@ function setMore(value: boolean) {
  * ***************************************************************************************
  * DESCRIPCIÓN: Expande una sección específica por índice.
  *****************************************************************************************/
-function showSection(i: number) {
+function showSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = true
 }
@@ -131,7 +105,7 @@ function showSection(i: number) {
  * ***************************************************************************************
  * DESCRIPCIÓN: Colapsa una sección específica por índice.
  *****************************************************************************************/
-function hideSection(i: number) {
+function hideSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = false
 }
@@ -143,23 +117,55 @@ function hideSection(i: number) {
  * ***************************************************************************************
  * DESCRIPCIÓN: Alterna (abre/cierra) una sección por índice.
  *****************************************************************************************/
-function toggleSection(i: number) {
+function toggleSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = !expanded.value[i]
 }
 
-/** DOM readiness expuesto al padre (Three.js) */
-const domReady = new Promise<void>((resolve) => {
+/*****************************************************************************************
+ * VARIABLE: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
+ *              - Useful to sync external logic (e.g., Three.js overlays) after mount.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Promesa que se resuelve cuando el componente se monta (DOM listo).
+ *              - Útil para sincronizar lógica externa (p. ej., overlays de Three.js) tras el mount.
+ *****************************************************************************************/
+const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
 
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes the accordion state right after the component is mounted.
+ *              - Builds a boolean array with the same length as `titles`, all set to false.
+ *              - Opens the first section by setting index 0 to true when available.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Inicializa el estado del acordeón justo después de montar el componente.
+ *              - Crea un arreglo de booleanos con la longitud de `titles`, todos en false.
+ *              - Abre la primera sección poniendo el índice 0 en true si existe.
+ *****************************************************************************************/
 onMounted(() => {
-  // Inicializa el acordeón con todas cerradas excepto la primera
   expanded.value = Array(titles.value.length).fill(false)
   if (expanded.value.length > 0) expanded.value[0] = true
 })
 
-defineExpose({
+/*****************************************************************************************
+ * FUNCTION CALL: defineExpose
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Exposes internal reactive references to the parent component.
+ *              - `screen`: HTMLDivElement ref used as the tablet screen container.
+ *              - `domReady`: Promise resolved when the component is mounted.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Expone referencias reactivas internas al componente padre.
+ *              - `screen`: referencia a HTMLDivElement usada como contenedor de la pantalla.
+ *              - `domReady`: Promesa que se resuelve al montar el componente.
+ *****************************************************************************************/
+defineExpose<{
+  screen: Ref<HTMLDivElement | null>
+  domReady: Promise<void>
+}>({
   screen,
   domReady,
 })

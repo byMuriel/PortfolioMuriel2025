@@ -21,30 +21,18 @@
 </template>
 
 <script setup lang="ts">
-/*****************************************************************************************
- * MODULE: Experience Screen Logic
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Loads experience items from JSON, resolves asset URLs for logos,
- *              and exposes DOM readiness for projection with Three.js.
- * ***************************************************************************************
- * MÓDULO: Lógica de la pantalla Experience
- * AUTORA: Muriel Vitale.
- * DESCRIPCIÓN: Carga items desde el JSON, resuelve URLs de logos,
- *              y expone el DOM listo para proyección con Three.js.
- *****************************************************************************************/
+import { ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
 
-import { ref, computed, onMounted } from 'vue'
 import ExperienceContent from '@/data/experience.json'
 
-/** ===================== Tipos ===================== */
 interface ExperienceRaw {
   name: string
   position: string
   initDate: string
   finalDate: string
   functions: string
-  link: string // puede ser http(s) o ruta a asset
-  logo: string // ruta a asset (png/svg/jpg)
+  link: string
+  logo: string
   [key: string]: unknown
 }
 
@@ -54,11 +42,13 @@ interface ExperienceResolved {
   initDate: string
   finalDate: string
   functions: string
-  link: string // url final (http o asset resuelto)
-  logo: string // url final de logo (asset resuelto)
+  link: string
+  logo: string
 }
 
-/** ===================== Utils ===================== */
+const rawList: ExperienceRaw[] = Object.values(ExperienceContent as Record<string, ExperienceRaw>)
+const screen: Ref<HTMLDivElement | null> = ref(null)
+
 /*****************************************************************************************
  * FUNCTION: resolveMaybeAsset
  * DESCRIPTION: If `path` is an http(s) URL, returns it as-is. Otherwise resolves it
@@ -70,12 +60,18 @@ function resolveMaybeAsset(path: string): string {
   return new URL(path, import.meta.url).href
 }
 
-/** ===================== Datos ===================== */
-// JSON → arreglo tipado
-const rawList: ExperienceRaw[] = Object.values(ExperienceContent as Record<string, ExperienceRaw>)
-
-/** Items resueltos (logo y link con URL final) */
-const ExperienceLogo = computed<ExperienceResolved[]>(() =>
+/*****************************************************************************************
+ * VARIABLE: ExperienceLogo
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed list of experiences with asset paths resolved.
+ *              - Maps raw JSON items to a UI-friendly shape (ExperienceResolved).
+ *              - Resolves `link` and `logo` via `resolveMaybeAsset` (http(s) or asset local).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Lista computada de experiencias con rutas de assets resueltas.
+ *              - Mapea los items del JSON crudo a un formato para UI (ExperienceResolved).
+ *              - Resuelve `link` y `logo` con `resolveMaybeAsset` (http(s) o asset local).
+ *****************************************************************************************/
+const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() =>
   rawList.map((item) => ({
     name: item.name,
     position: item.position,
@@ -87,27 +83,31 @@ const ExperienceLogo = computed<ExperienceResolved[]>(() =>
   })),
 )
 
-/** ===================== Emits ===================== */
-const emit = defineEmits<{
-  (e: 'change-screen', to: 'Init' | string): void
-}>()
-
 /*****************************************************************************************
- * FUNCTION: goBack
- * DESCRIPTION: Emits a screen change event to return to the Init screen.
- * DESCRIPCIÓN: Emite el evento para volver a la pantalla Init.
+ * VARIABLE: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
+ *              - Helpful to synchronize external logic (e.g., Three.js overlay alignment).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Promesa que se resuelve cuando el componente está montado (DOM listo).
+ *              - Útil para sincronizar lógica externa (p. ej., alineación de overlays Three.js).
  *****************************************************************************************/
-function goBack(): void {
-  emit('change-screen', 'Init')
-}
-
-/** ===================== Expuestos al padre (Three.js) ===================== */
-const screen = ref<HTMLElement | null>(null)
-const domReady: Promise<void> = new Promise((resolve) => {
+const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
 
-defineExpose({ screen, domReady })
+/*****************************************************************************************
+ * FUNCTION CALL: defineExpose
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Exposes internal references to the parent.
+ * ***************************************************************************************/
+defineExpose<{
+  screen: Ref<HTMLDivElement | null>
+  domReady: Promise<void>
+}>({
+  screen,
+  domReady,
+})
 </script>
 
 <style scoped>

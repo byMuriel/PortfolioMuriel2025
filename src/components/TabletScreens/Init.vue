@@ -33,29 +33,29 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+
+type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog'
+
+type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog'
+const currentTime: Ref<string> = ref('')
+const currentDate: Ref<string> = ref('')
+const screen: Ref<HTMLDivElement | null> = ref(null)
+
 /*****************************************************************************************
- * SCRIPT SETUP: TabletScreens/Init.vue
+ * EMITTER: defineEmits (change-screen)
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Controls the initial tablet screen and its behavior.
- *              - Handles screen navigation via `goTo()` with `defineEmits`.
- *              - Displays current time in HH:mm format, updated every minute.
- *              - Displays current date in format 'Sun, 20 July'.
- *              - Exposes `screen` (DOM ref) and `domReady` (Promise) to parent component.
- *              - Cleans up interval timer on unmount to prevent memory leaks.
+ * DESCRIPTION: Strongly-typed event emitter for screen navigation.
+ *              - Event: 'change-screen'
+ *              - Payload: view (ViewKey) → 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog'
  * ***************************************************************************************
- * DESCRIPCIÓN: Controla la pantalla inicial de la tablet y su comportamiento.
- *              - Gestiona la navegación entre pantallas usando `goTo()` y `defineEmits`.
- *              - Muestra la hora actual en formato HH:mm, actualizándola cada minuto.
- *              - Muestra la fecha actual en formato 'Sun, 20 July'.
- *              - Expone `screen` (referencia DOM) y `domReady` (Promesa) al componente padre.
- *              - Limpia el intervalo de actualización al desmontar para evitar fugas de memoria.
+ * DESCRIPCIÓN: Emisor de eventos tipado para la navegación entre pantallas.
+ *              - Evento: 'change-screen'
+ *              - Carga útil: view (ViewKey) → 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog'
  *****************************************************************************************/
-
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-
-const emit = defineEmits(['change-screen'])
-const currentTime = ref('')
-const currentDate = ref('')
+const emit = defineEmits<{
+  (e: 'change-screen', view: ViewKey): void
+}>()
 
 /*****************************************************************************************
  * FUNCTION: goTo
@@ -70,20 +70,13 @@ const currentDate = ref('')
  *              - Soporta los siguientes valores de ruta: "skills", "experience", "about",
  *                "projects", "contact" y "blog".
  *****************************************************************************************/
-const goTo = (route: string) => {
-  if (route === 'skills') {
-    emit('change-screen', 'Skills')
-  } else if (route === 'experience') {
-    emit('change-screen', 'Experience')
-  } else if (route === 'about') {
-    emit('change-screen', 'About')
-  } else if (route === 'projects') {
-    emit('change-screen', 'Projects')
-  } else if (route === 'contact') {
-    emit('change-screen', 'Contact')
-  } else if (route === 'blog') {
-    emit('change-screen', 'Blog')
-  }
+const goTo = (route: RouteKey): void => {
+  if (route === 'skills') emit('change-screen', 'Skills')
+  else if (route === 'experience') emit('change-screen', 'Experience')
+  else if (route === 'about') emit('change-screen', 'About')
+  else if (route === 'projects') emit('change-screen', 'Projects')
+  else if (route === 'contact') emit('change-screen', 'Contact')
+  else if (route === 'blog') emit('change-screen', 'Blog')
 }
 
 /*****************************************************************************************
@@ -97,7 +90,7 @@ const goTo = (route: string) => {
  *              - Útil para retrasar operaciones hasta que el DOM esté listo.
  *              - Se utiliza junto con `defineExpose()` para permitir el acceso desde el padre.
  *****************************************************************************************/
-const domReady = new Promise((resolve) => {
+const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
 
@@ -110,7 +103,13 @@ const domReady = new Promise((resolve) => {
  * DESCRIPCIÓN: Expone variables internas al componente padre.
  *              - Expone `screen` (referencia al DOM) y `domReady` (Promesa).
  *****************************************************************************************/
-defineExpose({ screen, domReady })
+defineExpose<{
+  screen: Ref<HTMLDivElement | null>
+  domReady: Promise<void>
+}>({
+  screen,
+  domReady,
+})
 
 /*****************************************************************************************
  * FUNCTION: updateTime
@@ -123,7 +122,7 @@ defineExpose({ screen, domReady })
  *              - Rellena con ceros a la izquierda si es necesario.
  *              - Se utiliza para mantener un reloj digital en la pantalla.
  *****************************************************************************************/
-const updateTime = () => {
+const updateTime = (): void => {
   const now = new Date()
   const hours = String(now.getHours()).padStart(2, '0')
   const minutes = String(now.getMinutes()).padStart(2, '0')
@@ -143,9 +142,9 @@ const updateTime = () => {
  *              - Obtiene los nombres del día y del mes desde arreglos predefinidos.
  *              - Rellena con cero a la izquierda el número del día.
  *****************************************************************************************/
-const updateDate = () => {
+const updateDate = (): void => {
   const now = new Date()
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
   const months = [
     'January',
     'February',
@@ -159,7 +158,7 @@ const updateDate = () => {
     'October',
     'November',
     'December',
-  ]
+  ] as const
 
   const dayName = days[now.getDay()]
   const dayNumber = String(now.getDate()).padStart(2, '0')
@@ -180,7 +179,7 @@ let timer: ReturnType<typeof setInterval> | null = null
  *              - Inicializa el reloj llamando a `updateTime()` y `updateDate()`.
  *              - Inicia un temporizador para actualizar la hora cada 60 segundos.
  *****************************************************************************************/
-onMounted(() => {
+onMounted((): void => {
   updateTime()
   updateDate()
   timer = window.setInterval(updateTime, 60_000)
@@ -197,7 +196,7 @@ onMounted(() => {
  *              - Limpia el temporizador usado para actualizar el reloj.
  *              - Previene fugas de memoria por temporizadores activos.
  *****************************************************************************************/
-onBeforeUnmount(() => {
+onBeforeUnmount((): void => {
   if (timer !== null) {
     clearInterval(timer)
     timer = null

@@ -21,38 +21,84 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { defineEmits } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, type Ref } from 'vue'
 import ContactContent from '@/data/contact.json'
 
-const ContactImage = ref([])
-ContactImage.value = Object.values(ContactContent).map((item) => ({
-  ...item,
-  logo: new URL(item.logo, import.meta.url).href,
-}))
-const ContactLink = ref([])
-ContactLink.value = Object.values(ContactContent).map((item) => ({
-  ...item,
-  logo: new URL(item.link, import.meta.url).href,
-}))
+const contactRaw = ContactContent as Record<string, ContactJSON>
+const screen: Ref<HTMLDivElement | null> = ref(null)
 
-const emit = defineEmits(['change-screen'])
-const goBack = (route) => {
-  emit('change-screen', 'Init')
+type ContactJSON = {
+  logo: string
+  link: string
+} & Record<string, unknown>
+
+type ContactVM = ContactJSON & {
+  logo: string
+  link: string
 }
 
-const screen = ref(null)
-const domReady = new Promise((resolve) => {
+/*****************************************************************************************
+ * VARIABLE: ContactImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive array of contact items with the logo asset resolved to an absolute URL.
+ *              - Builds the list from `contactRaw`.
+ *              - Keeps `link` as provided in the JSON (no transformation here).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Arreglo reactivo de contactos con el logo resuelto a URL absoluta.
+ *              - Construye la lista desde `contactRaw`.
+ *              - Mantiene `link` tal como viene en el JSON (sin transformación aquí).
+ *****************************************************************************************/
+const ContactImage = ref<ContactVM[]>([])
+ContactImage.value = Object.values(contactRaw).map((item) => ({
+  ...item,
+  logo: new URL(item.logo, import.meta.url).href,
+  link: item.link,
+}))
+
+/*****************************************************************************************
+ * VARIABLE: ContactLink
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive array of contact items with both `logo` and `link` resolved
+ *              to absolute URLs using `import.meta.url` as base.
+ *              - Useful when JSON paths are relative to the project.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Arreglo reactivo de contactos con `logo` y `link` resueltos a URLs absolutas
+ *              usando `import.meta.url` como base.
+ *              - Útil cuando las rutas del JSON son relativas al proyecto.
+ *****************************************************************************************/
+const ContactLink = ref<ContactVM[]>([])
+ContactLink.value = Object.values(contactRaw).map((item) => ({
+  ...item,
+  logo: new URL(item.logo, import.meta.url).href,
+  link: new URL(item.link, import.meta.url).href,
+}))
+
+/*****************************************************************************************
+ * VARIABLE: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
+ *              - Helpful to synchronize external logic (e.g., Three.js overlay alignment).
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Promesa que se resuelve cuando el componente está montado (DOM listo).
+ *              - Útil para sincronizar lógica externa (p. ej., alineación de overlays Three.js).
+ *****************************************************************************************/
+const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
 
-defineExpose({
+/*****************************************************************************************
+ * FUNCTION CALL: defineExpose
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Exposes internal references to the parent.
+ * ***************************************************************************************/
+defineExpose<{
+  screen: Ref<HTMLDivElement | null>
+  domReady: Promise<void>
+}>({
   screen,
   domReady,
 })
-
-onMounted(() => {})
 </script>
 
 <style scoped>

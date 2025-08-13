@@ -5,9 +5,25 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { defineEmits } from 'vue'
-const emit = defineEmits(['change-screen'])
+
+/*****************************************************************************************
+ * EMITTER: defineEmits (change-screen)
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Declares the component's emitted events with strong typing.
+ *              - Event 'change-screen': notifies the parent to switch the current view.
+ *              - Payload 'view' (string): target view name (e.g., 'Init').
+ * USAGE: emit('change-screen', 'Init')
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Declara los eventos emitidos por el componente con tipado estricto.
+ *              - Evento 'change-screen': notifica al padre cambiar la vista actual.
+ *              - Carga útil 'view' (string): nombre de la vista destino (p. ej., 'Init').
+ *****************************************************************************************/
+const emit = defineEmits<{
+  (e: 'change-screen', view: string): void
+}>()
+
 /*****************************************************************************************
  * FUNCTION: goBack
  * AUTHOR: Muriel Vitale.
@@ -19,7 +35,7 @@ const emit = defineEmits(['change-screen'])
  *              - Dispara el evento 'change-screen' con el valor 'Init'.
  *              - Pensado para ser usado por el componente BackButton para volver al inicio.
  *****************************************************************************************/
-const goBack = (route) => {
+const goBack = (): void => {
   emit('change-screen', 'Init')
 }
 </script>

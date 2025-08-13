@@ -31,6 +31,7 @@
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^22.15.32",
     "@types/sizzle": "^2.3.9",
+    "@types/three": "^0.179.0",
     "@types/vue-router": "^2.0.0",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/eslint-config-prettier": "^10.2.0",
@@ -50,5 +51,14 @@
     "vite": "^7.0.0",
     "vite-plugin-vue-devtools": "^7.7.7",
     "vue-tsc": "^2.2.12"
-  }
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
 }

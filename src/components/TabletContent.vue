@@ -9,27 +9,9 @@
   </div>
 </template>
 
-<script setup>
-/*****************************************************************************************
- * SCRIPT SETUP: TabletScreen.vue
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles the display logic for 3D tablet content.
- *              - Imports Vue components representing different views/screens.
- *              - Initializes the default view (`Init`) using `shallowRef` for dynamic rendering.
- *              - Creates a reactive DOM reference to the screen container.
- *              - Exposes a `domReady` Promise that resolves once the component is mounted.
- *              - Defines `handleChangeScreen` to dynamically switch between views.
- *              - Exposes `screen` and `domReady` for external access via `defineExpose`.
- * ***************************************************************************************
- * DESCRIPCIÓN: Gestiona la lógica de visualización del contenido dentro de la tablet 3D.
- *              - Importa los componentes Vue que representan las distintas pantallas o vistas.
- *              - Inicializa la vista por defecto (`Init`) usando `shallowRef` para renderizado dinámico.
- *              - Crea una referencia reactiva al contenedor DOM de la pantalla.
- *              - Expone una promesa `domReady` que se resuelve cuando el componente está montado.
- *              - Define `handleChangeScreen` para cambiar dinámicamente entre vistas.
- *              - Expone `screen` y `domReady` para que puedan ser accedidos desde el componente padre.
- *****************************************************************************************/
-import { ref, onMounted, shallowRef } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, shallowRef, type Ref, type ShallowRef } from 'vue'
+import type { Component } from 'vue'
 
 import BackButton from '@/components/CommonComponents/BackButton.vue'
 import Init from './TabletScreens/Init.vue'
@@ -40,8 +22,16 @@ import Projects from './TabletScreens/Projects.vue'
 import Contact from './TabletScreens/Contact.vue'
 import Blog from './Blog.vue'
 
-const screen = ref(null)
-const views = { Init, About, Skills, Experience, Projects, Contact, Blog }
+const screen: Ref<HTMLDivElement | null> = ref(null)
+const views = {
+  Init,
+  About,
+  Skills,
+  Experience,
+  Projects,
+  Contact,
+  Blog,
+} as const satisfies Record<string, Component>
 
 /*****************************************************************************************
  * VARIABLE: domReady
@@ -54,7 +44,7 @@ const views = { Init, About, Skills, Experience, Projects, Contact, Blog }
  *              - Útil para sincronizar lógica externa que depende del DOM ya renderizado.
  *              - Comúnmente utilizada junto con renderizado 3D o posicionamiento de overlays.
  *****************************************************************************************/
-const domReady = new Promise((resolve) => {
+const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
 
@@ -69,7 +59,7 @@ const domReady = new Promise((resolve) => {
  *              - Inicialmente se asigna a `Init`.
  *              - Se actualiza dinámicamente mediante `handleChangeScreen()`.
  *****************************************************************************************/
-const currentView = shallowRef(Init)
+const currentView: ShallowRef<Component> = shallowRef(Init as Component)
 
 /*****************************************************************************************
  * FUNCTION: handleChangeScreen
@@ -82,7 +72,7 @@ const currentView = shallowRef(Init)
  *              - Acepta un componente Vue como parámetro.
  *              - Provoca el re-renderizado de la pantalla mostrada en la tablet.
  *****************************************************************************************/
-const handleChangeScreen = (newView) => {
+const handleChangeScreen = (newView: keyof typeof views): void => {
   currentView.value = views[newView] || Init
 }
 
