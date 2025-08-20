@@ -1,17 +1,21 @@
 {
   "mail": {
     "logo": "/src/assets/images/ContactLogos/correo1.jpg",
-    "name": "",
+    "name": "E-mail",
+    "message": "contact@murielvitale.com",
     "link": "contact@murielvitale.com"
   },
   "gitHub": {
     "logo": "/src/assets/images/ContactLogos/github.jpg",
-    "name": "GitHub: /byMuriel",
+    "name": "GitHub:",
+    "message": "/byMuriel",
     "link": "https://github.com/byMuriel"
   },
   "linkedIn": {
     "logo": "/src/assets/images/ContactLogos/linkedin.png",
-    "name": "LinkedIn: /murielvitale",
+    "name": "LinkedIn:",
+
+    "message": "/murielvitale",
     "link": "https://www.linkedin.com/in/murielvitale/"
   }
 }
