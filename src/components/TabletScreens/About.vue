@@ -1,9 +1,45 @@
 <!-- src/components/About.vue -->
 <template>
   <div class="container-fluid aboutApplication aboutShadow m-0 p-0">
-    <div class="containerAbout mt-5 mb-5">
-      <!-- Head -->
-      <div class="aboutHero">
+    <!-- Tools Buttons -->
+    <div class="tools">
+      <img class="logoPrinc" src="@/assets/images/AboutMe/logos/logoPrinc.png" alt="" />
+      <span
+        @click="go('Init')"
+        class="toolButton iconContainer d-flex justify-content-center align-items-center"
+      >
+        <i class="bi bi-house-door-fill" style="font-size: 1.5rem; color: grey"></i>
+        <p class="textIcon m-0 p-0">Home</p>
+      </span>
+      <span
+        @click="go('Experience')"
+        class="toolButton iconContainer d-flex justify-content-center align-items-center"
+      >
+        <i class="bi bi-briefcase-fill" style="font-size: 1.5rem; color: grey"></i>
+        <p class="textIcon">Jobs</p>
+      </span>
+      <span
+        @click="go('Projects')"
+        class="toolButton iconContainer d-flex justify-content-center align-items-center"
+      >
+        <i class="bi bi-folder-fill" style="font-size: 1.5rem; color: grey"></i>
+        <p class="textIcon">Projects</p>
+      </span>
+      <span
+        @click="go('Contact')"
+        class="toolButton iconContainer d-flex justify-content-center align-items-center"
+      >
+        <i class="bi bi-chat-quote-fill" style="font-size: 1.5rem; color: grey"></i>
+        <p class="textIcon">Contact</p>
+      </span>
+      <a :href="linkLinkedIn" target="_blank" rel="noopener noreferrer">
+        <span class="toolButton bluePill">View LinkedIn Profile</span>
+      </a>
+    </div>
+    <!-- Content -->
+    <div class="containerAbout pb-3">
+      <!-- Head (Presentation) -->
+      <div class="aboutHead">
         <img class="fondoAbout" src="/src/assets/images/AboutMe/fondo.jpg" alt="" />
         <img class="murielImg" src="/src/assets/images/AboutMe/muriel.png" alt="" />
         <h1 class="name m-0 p-0">
@@ -30,6 +66,7 @@
           </p>
         </div>
       </div>
+      <!-- Content Cards (About me) -->
       <div class="aboutCard m-0 p-2" v-for="(title, index) in titles" :key="index">
         <div>
           <h5 class="text-dark m-0 p-0 pb-1">{{ title }}</h5>
@@ -41,18 +78,20 @@
           <span class="pill" v-if="!expanded[index]" @click="showSection(index)">See More</span>
         </div>
 
-        <span class="pill" v-if="expanded[index]" @click="hideSection(index)">See Less</span>
+        <span class="pill less" v-if="expanded[index]" @click="hideSection(index)">See Less</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
-import aboutData from '@/data/about.json'
+import { inject, ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
+import { useRedirectStore } from '@/stores/useRedirect'
+import LinkLinkedIn from '@/data/contact.json'
 
 type StringDict = Record<string, string>
 type MaybeList = string[] | StringDict | undefined
+type ViewKey = 'Skills' | 'Experience' | 'Projects' | 'Contact' | 'Blog'
 
 interface AboutContentShape {
   intro: string
@@ -60,18 +99,103 @@ interface AboutContentShape {
   Ubication: string
   Position: string
   Skills: string[]
-  AboutMeTittles?: MaybeList
+  AboutMeTitles?: MaybeList
   AboutMe?: MaybeList
 }
-
-const AboutContent = aboutData as AboutContentShape
-
 const screen = ref<HTMLDivElement | null>(null)
 const more = ref<boolean>(false)
 const expanded = ref<boolean[]>([])
-const toArray = (v: MaybeList): string[] => (Array.isArray(v) ? v : v ? Object.values(v) : [])
-const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.AboutMeTittles))
-const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.AboutMe))
+
+// Store
+const redirectStore = useRedirectStore()
+
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation from the About component to another screen.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
+ *****************************************************************************************/
+function go(to: string) {
+  redirectStore.redirect(to)
+}
+
+// Datos inyectados
+const data = inject<Ref<{ about: AboutContentShape }>>('data')
+if (!data) {
+  throw new Error('No se proporcionó "data" via provide().')
+}
+const aboutData = computed(() => data.value.about)
+
+/*****************************************************************************************
+ * CONSTANT: AboutContent
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that provides typed access to the About component's data.
+ *              - Casts the raw `aboutData` to the `AboutContentShape` interface.
+ *              - Ensures strong typing for template binding and code completion.
+ * ***************************************************************************************
+ * CONSTANTE: AboutContent
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que provee acceso tipado a los datos del componente About.
+ *              - Convierte el `aboutData` crudo a la interfaz `AboutContentShape`.
+ *              - Garantiza tipado estricto para el uso en el template y autocompletado.
+ *****************************************************************************************/
+const AboutContent: ComputedRef<AboutContentShape> = computed(
+  () => aboutData.value as AboutContentShape,
+)
+
+/*****************************************************************************************
+ * CONSTANT: linkLinkedIn
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that resolves the LinkedIn profile URL.
+ *              - Extracts the `link` field from `LinkLinkedIn.linkedIn`.
+ *              - Provides a strongly typed string for safe use in the template.
+ * ***************************************************************************************
+ * CONSTANTE: linkLinkedIn
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que resuelve la URL del perfil de LinkedIn.
+ *              - Extrae el campo `link` de `LinkLinkedIn.linkedIn`.
+ *              - Provee un string tipado para uso seguro en el template.
+ *****************************************************************************************/
+const linkLinkedIn: ComputedRef<string> = computed(() => LinkLinkedIn.linkedIn.link)
+
+// Utilidades
+const toArray = (v: MaybeList): string[] => {
+  if (!v) return []
+  return Array.isArray(v) ? v : Object.values(v)
+}
+
+/*****************************************************************************************
+ * CONSTANT: titles
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that exposes the "AboutMeTitles" field as a string array.
+ *              - Converts the raw data into an array using the `toArray` utility.
+ *              - Provides a clean and typed structure for iteration in the template.
+ * ***************************************************************************************
+ * CONSTANTE: titles
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMeTitles" como un arreglo de strings.
+ *              - Convierte los datos crudos en un arreglo utilizando el helper `toArray`.
+ *              - Entrega una estructura tipada y lista para iterar en el template.
+ *****************************************************************************************/
+const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMeTitles))
+
+/*****************************************************************************************
+ * CONSTANT: paragraphs
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that exposes the "AboutMe" field as a string array.
+ *              - Normalizes the raw content into an array with the `toArray` utility.
+ *              - Ensures predictable structure for rendering descriptive text in the template.
+ * ***************************************************************************************
+ * CONSTANTE: paragraphs
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMe" como un arreglo de strings.
+ *              - Normaliza el contenido crudo en un arreglo con el helper `toArray`.
+ *              - Garantiza una estructura predecible para renderizar texto descriptivo en el template.
+ *****************************************************************************************/
+const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMe))
 
 /*****************************************************************************************
  * FUNCTION: setMore
@@ -147,8 +271,8 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
  *              - Abre la primera sección poniendo el índice 0 en true si existe.
  *****************************************************************************************/
 onMounted(() => {
-  expanded.value = Array(titles.value.length).fill(false)
-  if (expanded.value.length > 0) expanded.value[0] = true
+  //Primer elemento abierto y el resto cerrado
+  expanded.value = titles.value.map((_, i) => i === 0)
 })
 
 /*****************************************************************************************
@@ -173,12 +297,11 @@ defineExpose<{
 
 <style scoped>
 .aboutApplication {
-  position: relative;
-  pointer-events: auto;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  pointer-events: auto;
+  width: 100%;
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
@@ -193,17 +316,64 @@ defineExpose<{
   z-index: 999;
   pointer-events: none;
 }
-.containerAbout {
+.tools {
+  flex: 0 0 auto;
+  height: 3.5rem;
+  background-color: rgb(238, 235, 235);
+  z-index: 10;
+  width: 85%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  margin-left: 10%;
+  margin-right: 0.5rem;
+}
+.toolButton {
+  cursor: pointer;
+}
+.bi {
+  height: 1.6rem;
+}
+.tools span {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   align-items: center;
-  width: 100%;
-  max-height: 100%;
+  gap: 0rem;
+}
+.logoPrinc {
+  width: 3rem;
+}
+.textIcon {
+  position: static;
+  top: 0.5rem;
+  color: grey;
+  font-size: 0.55rem;
+  margin: 0;
+}
+.bluePill {
+  background-color: rgb(64, 122, 231);
+  border-radius: 5rem;
+  color: white;
+  width: fit-content;
+  height: fit-content;
+  margin: 0;
+  padding: 0.3rem 1rem;
+  font-size: 0.8rem;
+  left: 17rem;
+}
+.containerAbout {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
 }
-.aboutHero {
+.aboutHead {
   width: 95%;
   height: 19rem;
   background-color: rgb(255, 255, 255);
@@ -245,6 +415,7 @@ defineExpose<{
   padding: 0;
   top: -0.25rem;
   font-size: 1.5rem;
+  cursor: default;
 }
 .name {
   position: relative;
@@ -275,9 +446,16 @@ defineExpose<{
   font-size: 0.7rem;
 }
 .pill {
-  border: 0.1rem solid rgb(64, 122, 231);
-  border-radius: 5rem;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.3rem 1.5rem;
   color: rgb(64, 122, 231);
+  box-shadow: inset 0 0 0 1.6px rgb(64, 122, 231);
+  background: transparent;
+  transition:
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
   width: fit-content;
   height: fit-content;
   margin: 0;
@@ -287,7 +465,18 @@ defineExpose<{
   left: 17rem;
 }
 .pill:hover {
-  background: rgba(64, 122, 231, 0.1);
+  box-shadow: inset 0 0 0 2.4px rgb(64, 122, 231);
+  background: rgba(64, 122, 231, 0.08);
+  cursor: pointer;
+}
+.pill.less {
+  border: 0;
+  box-shadow: inset 0 0 0 1.6px rgb(83, 83, 83);
+  color: rgb(83, 83, 83);
+}
+.less:hover {
+  box-shadow: inset 0 0 0 2.4px rgb(58, 57, 57);
+  background: rgba(110, 110, 110, 0.08);
   cursor: pointer;
 }
 .aboutCard {

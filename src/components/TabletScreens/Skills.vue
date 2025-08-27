@@ -24,8 +24,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import SkillsContent from '@/data/skills.json'
+import { inject, ref, computed, onMounted } from 'vue'
+const data = inject('data', ref({}))
+const SkillsContent = computed(() => data.value?.skills ?? {})
 
 type SkillJSON = {
   logo: string
@@ -42,20 +43,22 @@ type SkillVM = SkillJSON & {
 
 const skillsRaw = SkillsContent as Record<string, SkillJSON>
 
-const skills = computed<SkillVM[]>(() =>
-  Object.values(skillsRaw).map((item) => ({
-    ...item,
-    logo: new URL(item.logo, import.meta.url).href,
-    categories: (item.category ?? []).map((c) => c.trim()).filter(Boolean),
-  })),
-)
+const skills = computed<SkillVM[]>(() => {
+  const raw = SkillsContent.value ?? {}
+  return Object.values(raw)
+    .filter((item): item is SkillJSON => !!item)
+    .map((item) => ({
+      ...item,
+      logo: item.logo ? new URL(item.logo, import.meta.url).href : '',
+      categories: (item.category ?? []).map((c) => c.trim()).filter(Boolean),
+    }))
+})
 
 const uniqueCategories = computed<string[]>(() => {
-  const count = new Map<string, number>() // categoría -> veces que aparece
-  const firstIdx = new Map<string, number>() // categoría -> primer índice donde apareció
+  const count = new Map<string, number>()
+  const firstIdx = new Map<string, number>()
 
   skills.value.forEach((s, i) => {
-    // Evita contar dos veces la misma categoría dentro de una misma skill
     const perSkill = new Set(s.categories)
     perSkill.forEach((c) => {
       if (!firstIdx.has(c)) firstIdx.set(c, i)
@@ -65,9 +68,8 @@ const uniqueCategories = computed<string[]>(() => {
 
   const cats = Array.from(count.keys())
   cats.sort((a, b) => {
-    const diff = (count.get(b) ?? 0) - (count.get(a) ?? 0) // más frecuentes primero
+    const diff = (count.get(b) ?? 0) - (count.get(a) ?? 0)
     if (diff !== 0) return diff
-    // empate: la que apareció antes en el JSON primero
     return (firstIdx.get(a) ?? 0) - (firstIdx.get(b) ?? 0)
   })
   return cats

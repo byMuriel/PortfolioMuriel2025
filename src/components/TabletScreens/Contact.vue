@@ -1,9 +1,10 @@
 <!-- src/components/Contact.vue -->
 <template>
   <div class="container-fluid contactApplication m-0 p-0">
+    <div class="m-0 p-0 mt-5 mb-3 text-start tittle">
+      <p class="text-dark ms-3">Contact me</p>
+    </div>
     <div class="containerContact">
-      <div class="mt-5 mb-3"></div>
-
       <div v-for="(contact, index) in ContactImage" :key="index" class="m-0 p-1 mb-3 contactCard">
         <div
           class="container-fluid d-flex justify-content-between align-items-center"
@@ -33,58 +34,117 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, type Ref } from 'vue'
-import ContactContent from '@/data/contact.json'
+import { inject, type Ref, ref, computed, type ComputedRef, watchEffect, onMounted } from 'vue'
 
-const contactRaw = ContactContent as Record<string, ContactJSON>
+const data = inject<Ref<ProvidedData>>('data')
+if (!data) throw new Error('No se inyectó "data".')
 const screen: Ref<HTMLDivElement | null> = ref(null)
-const clicked = ref(Array(Object.keys(contactRaw).length).fill(false))
 
 type ContactJSON = {
   logo: string
   link: string
 } & Record<string, unknown>
-
+type ProvidedData = {
+  contact: Record<string, ContactJSON>
+}
 type ContactVM = ContactJSON & {
   logo: string
   link: string
 }
 
 /*****************************************************************************************
+ * CONSTANT: ContactContent
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that exposes the raw contact data from the injected `data`.
+ *              - Returns the `contact` record as defined in the provided JSON structure.
+ *              - Serves as the base source for building other derived states such as
+ *                `contactKeys`, `ContactImage`, and `ContactLink`.
+ * ***************************************************************************************
+ * CONSTANTE: ContactContent
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que expone los datos crudos de contactos desde `data` inyectado.
+ *              - Retorna el registro `contact` según lo definido en la estructura JSON provista.
+ *              - Sirve como base para construir otros estados derivados como
+ *                `contactKeys`, `ContactImage` y `ContactLink`.
+ *****************************************************************************************/
+const ContactContent: ComputedRef<Record<string, ContactJSON>> = computed(() => data.value.contact)
+/*****************************************************************************************
+ * CONSTANT: contactKeys
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that extracts all keys from `ContactContent`.
+ *              - Produces an array of strings representing the contact identifiers.
+ *              - Useful for iteration, indexing, or building parallel reactive arrays.
+ * ***************************************************************************************
+ * CONSTANTE: contactKeys
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que extrae todas las claves de `ContactContent`.
+ *              - Genera un arreglo de strings que representan los identificadores de contactos.
+ *              - Útil para iteración, indexación o construcción de arreglos reactivos paralelos.
+ *****************************************************************************************/
+const contactKeys = computed(() => Object.keys(ContactContent.value))
+/*****************************************************************************************
  * VARIABLE: ContactImage
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Reactive array of contact items with the logo asset resolved to an absolute URL.
- *              - Builds the list from `contactRaw`.
- *              - Keeps `link` as provided in the JSON (no transformation here).
+ * DESCRIPTION: Reactive array of contact items where `logo` is resolved to an absolute URL.
+ *              - Builds the list from `data.value.contact` (typed as a record).
+ *              - Preserves `link` exactly as provided in the JSON (no transformation).
+ *              - Returns a strongly-typed ContactVM[] for safe template iteration.
  * ***************************************************************************************
- * DESCRIPCIÓN: Arreglo reactivo de contactos con el logo resuelto a URL absoluta.
- *              - Construye la lista desde `contactRaw`.
- *              - Mantiene `link` tal como viene en el JSON (sin transformación aquí).
+ * DESCRIPCIÓN: Arreglo reactivo de contactos donde `logo` se resuelve a una URL absoluta.
+ *              - Construye la lista desde `data.value.contact` (tipado como record).
+ *              - Mantiene `link` tal como viene en el JSON (sin transformación).
+ *              - Retorna un ContactVM[] tipado para iteración segura en el template.
  *****************************************************************************************/
-const ContactImage = ref<ContactVM[]>([])
-ContactImage.value = Object.values(contactRaw).map((item) => ({
-  ...item,
-  logo: new URL(item.logo, import.meta.url).href,
-  link: item.link,
-}))
-
+const ContactImage = computed<ContactVM[]>(() => {
+  if (!data?.value?.contact) return []
+  const raw = data.value.contact as Record<string, ContactJSON>
+  return Object.values(raw).map((item) => ({
+    ...item,
+    logo: new URL(item.logo, import.meta.url).href,
+    link: item.link,
+  }))
+})
 /*****************************************************************************************
  * VARIABLE: ContactLink
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Reactive array of contact items with both `logo` and `link` resolved
- *              to absolute URLs using `import.meta.url` as base.
- *              - Useful when JSON paths are relative to the project.
+ *              to absolute URLs using `import.meta.url` as base when paths are relative.
+ *              - If the JSON already provides an absolute URL, it is preserved as-is.
+ *              - Useful when JSON paths are stored relative to the project structure.
  * ***************************************************************************************
  * DESCRIPCIÓN: Arreglo reactivo de contactos con `logo` y `link` resueltos a URLs absolutas
- *              usando `import.meta.url` como base.
- *              - Útil cuando las rutas del JSON son relativas al proyecto.
+ *              usando `import.meta.url` como base cuando las rutas son relativas.
+ *              - Si el JSON ya provee una URL absoluta, se conserva tal cual.
+ *              - Útil cuando las rutas del JSON se guardan relativas a la estructura del proyecto.
  *****************************************************************************************/
-const ContactLink = ref<ContactVM[]>([])
-ContactLink.value = Object.values(contactRaw).map((item) => ({
-  ...item,
-  logo: new URL(item.logo, import.meta.url).href,
-  link: new URL(item.link, import.meta.url).href,
-}))
+const ContactLink = computed<ContactVM[]>(() => {
+  if (!data?.value?.contact) return []
+  const raw = data.value.contact as Record<string, ContactJSON>
+  return Object.values(raw).map((item) => ({
+    ...item,
+    logo: new URL(item.logo, import.meta.url).href,
+    link: new URL(item.link, import.meta.url).href,
+  }))
+})
+
+const clicked = ref<boolean[]>([])
+
+/*****************************************************************************************
+ * WATCHER: clicked initialization
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive effect that synchronizes the `clicked` array length with the
+ *              number of available contacts.
+ *              - Rebuilds `clicked` whenever `contactKeys` changes.
+ *              - Ensures that each contact has a corresponding boolean state initialized to `false`.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Efecto reactivo que sincroniza la longitud del arreglo `clicked` con la
+ *              cantidad de contactos disponibles.
+ *              - Reconstruye `clicked` cada vez que cambia `contactKeys`.
+ *              - Garantiza que cada contacto tenga un estado booleano correspondiente inicializado en `false`.
+ *****************************************************************************************/
+watchEffect(() => {
+  clicked.value = Array(contactKeys.value.length).fill(false)
+})
 
 /*****************************************************************************************
  * VARIABLE: domReady
@@ -104,16 +164,10 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Marks the contact at the given index as "clicked" by setting its state
  *              to true in the `clicked` array. Also logs the contact's name to the console.
- *
- * PARAMETERS:
- *  - index (number): The numeric position of the contact inside `ContactImage`.
  * ***************************************************************************************
  * DESCRIPCIÓN: Marca el contacto en el índice dado como "clicado" estableciendo su estado
  *              en true dentro del arreglo `clicked`. Además, muestra en consola el nombre
  *              del contacto.
- *
- * PARÁMETROS:
- *  - index (number): La posición numérica del contacto dentro de `ContactImage`.
  *****************************************************************************************/
 function getIn(index: number): void {
   clicked.value[index] = true
@@ -149,6 +203,9 @@ defineExpose<{
   font-family: sans-serif;
   background-color: rgb(245, 243, 240);
   box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
+}
+.tittle {
+  width: 100%;
 }
 .containerContact {
   width: 100%;

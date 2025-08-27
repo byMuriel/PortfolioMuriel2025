@@ -21,10 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
-
-import ExperienceContent from '@/data/experience.json'
-
+import { inject, ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
+const data= inject('data')
+const ExperienceContent = computed(() => data.value.experience)
 interface ExperienceRaw {
   name: string
   position: string
@@ -71,8 +70,10 @@ function resolveMaybeAsset(path: string): string {
  *              - Mapea los items del JSON crudo a un formato para UI (ExperienceResolved).
  *              - Resuelve `link` y `logo` con `resolveMaybeAsset` (http(s) o asset local).
  *****************************************************************************************/
-const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() =>
-  rawList.map((item) => ({
+const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() => {
+  const raw = data?.value?.experience as Record<string, ExperienceRaw> | undefined
+  if (!raw) return []
+  return Object.values(raw).map((item) => ({
     name: item.name,
     position: item.position,
     initDate: item.initDate,
@@ -80,8 +81,8 @@ const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() =>
     functions: item.functions,
     link: resolveMaybeAsset(item.link),
     logo: resolveMaybeAsset(item.logo),
-  })),
-)
+  }))
+})
 
 /*****************************************************************************************
  * VARIABLE: domReady

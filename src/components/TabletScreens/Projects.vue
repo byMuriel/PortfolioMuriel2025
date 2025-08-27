@@ -1,6 +1,6 @@
 <!-- src/components/Projects.vue -->
 <template>
-  <div class="container-fluid ProjectsApplication m-0 p-0">
+  <div class="container-fluid ProjectsApplication m-0 p-0 mt-5 pt-3">
     <!-- CurrentProject -->
     <transition name="fade" mode="out-in">
       <img
@@ -76,8 +76,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
-import rawProjects from '@/data/projects.json'
+import { inject, ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+const data = inject('data')
+const rawProjects = computed(() => data.value.projects)
 
 type ImageField = string[] | Record<string, string> | undefined
 
@@ -124,7 +125,10 @@ let intervalId: ReturnType<typeof setInterval> | null = null
  * ***************************************************************************************
  * DESCRIPCIÓN: Lista normalizada de proyectos cargada desde el JSON (objeto → arreglo).
  *****************************************************************************************/
-const projects: Project[] = Object.values(rawProjects as Record<string, Project>)
+const projects: ComputedRef<Project[]> = computed(() => {
+  const raw = rawProjects.value ?? {}
+  return Object.values(raw).filter((p): p is Project => !!p) // filtra undefined
+})
 
 /*****************************************************************************************
  * STATE: currentProjectIndex / currentImageIndex
@@ -133,7 +137,6 @@ const projects: Project[] = Object.values(rawProjects as Record<string, Project>
  * ***************************************************************************************
  * DESCRIPCIÓN: Índices reactivos del proyecto seleccionado y su imagen actual.
  *****************************************************************************************/
-
 const currentProjectIndex: Ref<number> = ref(0)
 const currentImageIndex: Ref<number> = ref(0)
 
@@ -144,9 +147,7 @@ const currentImageIndex: Ref<number> = ref(0)
  * ***************************************************************************************
  * DESCRIPCIÓN: Retorna el proyecto activo (con un fallback seguro si la lista está vacía).
  *****************************************************************************************/
-const currentProject: ComputedRef<Project> = computed(
-  () => projects[currentProjectIndex.value] ?? projects[0] ?? defaultProject,
-)
+const currentProject = computed(() => projects.value[currentProjectIndex.value] ?? defaultProject)
 
 /*****************************************************************************************
  * COMPUTED: images
@@ -155,7 +156,7 @@ const currentProject: ComputedRef<Project> = computed(
  * ***************************************************************************************
  * DESCRIPCIÓN: Normaliza el campo `image` del proyecto a un arreglo de strings (array o objeto).
  *****************************************************************************************/
-const images: ComputedRef<string[]> = computed(() => {
+const images = computed(() => {
   const imgs = currentProject.value?.image
   return Array.isArray(imgs) ? imgs : imgs ? Object.values(imgs) : []
 })
@@ -167,9 +168,7 @@ const images: ComputedRef<string[]> = computed(() => {
  * ***************************************************************************************
  * DESCRIPCIÓN: URL de la imagen actual del proyecto activo, según `currentImageIndex`.
  *****************************************************************************************/
-const currentImage: ComputedRef<string | undefined> = computed(
-  () => images.value[currentImageIndex.value],
-)
+const currentImage = computed(() => images.value[currentImageIndex.value])
 
 /*****************************************************************************************
  * COMPUTED: otherProjects
@@ -179,7 +178,7 @@ const currentImage: ComputedRef<string | undefined> = computed(
  * DESCRIPCIÓN: Lista de proyectos excluyendo el activo, preservando el índice original.
  *****************************************************************************************/
 const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = computed(() =>
-  projects
+  projects.value
     .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
     .filter((_, i) => i !== currentProjectIndex.value),
 )
@@ -202,7 +201,8 @@ type ProjectWithLogo = ProjectBase & { logo: string | null }
  * DESCRIPCIÓN: Proyectos con `logo` convertido a URL absoluta de asset (o null si no existe).
  *****************************************************************************************/
 const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
-  projects.map((p) => {
+  projects.value.map((p) => {
+    // ❌ Aquí necesitas .value
     const { logo: rawLogo, ...rest } = p
     const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
     return { ...(rest as ProjectBase), logo: resolved }
@@ -313,6 +313,10 @@ defineExpose({ screen, domReady })
  *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
+  // console.log('rawProjects', rawProjects.value)
+  // console.log('projects', projects.value)
+  // console.log('currentProject', currentProject.value)
+  // console.log('currentImage', currentImage.value)
 })
 
 /*****************************************************************************************

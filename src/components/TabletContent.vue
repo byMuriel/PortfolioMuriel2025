@@ -1,16 +1,19 @@
+<!-- src\components\TabletContent.vue -->
 <template>
   <div ref="screen" class="screen-content">
     <BackButton
-      v-if="currentView != Init"
-      @change-screen="handleChangeScreen"
+      v-if="redirectStore.current !== 'Init'"
+      @change-screen="toReturn"
       class="back-button"
-    ></BackButton>
+    />
     <component :is="currentView" @change-screen="handleChangeScreen" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, shallowRef, type Ref, type ShallowRef } from 'vue'
+import { ref, onMounted, shallowRef, type Ref, type ShallowRef, watch } from 'vue'
+import { useRedirectStore, type ScreenName } from '@/stores/useRedirect'
+import { useLastScreen } from '@/stores/useLastScreen'
 import type { Component } from 'vue'
 
 import BackButton from '@/components/CommonComponents/BackButton.vue'
@@ -23,7 +26,9 @@ import Contact from './TabletScreens/Contact.vue'
 import Blog from './Blog.vue'
 
 const screen: Ref<HTMLDivElement | null> = ref(null)
-const views = {
+const redirectStore = useRedirectStore()
+const lastScreen = useLastScreen()
+const views: Record<ScreenName, Component> = {
   Init,
   About,
   Skills,
@@ -62,18 +67,69 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
 const currentView: ShallowRef<Component> = shallowRef(Init as Component)
 
 /*****************************************************************************************
+ * WATCHER: redirectStore.current
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Observes changes in the active screen name stored in `redirectStore`.
+ *              - When `current` changes, updates `currentView` with the corresponding
+ *                Vue component from the `views` map.
+ *              - Ensures that the displayed screen in the tablet always matches
+ *                the current navigation state.
+ * ***************************************************************************************
+ * OBSERVADOR: redirectStore.current
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Observa los cambios en el nombre de pantalla activa almacenado en `redirectStore`.
+ *              - Cuando `current` cambia, actualiza `currentView` con el componente Vue
+ *                correspondiente desde el mapa `views`.
+ *              - Garantiza que la pantalla mostrada en la tablet coincida siempre con
+ *                el estado de navegación actual.
+ *****************************************************************************************/
+watch(
+  () => redirectStore.current,
+  (newView: ScreenName) => {
+    currentView.value = views[newView] || Init
+  },
+  { immediate: true },
+)
+
+/*****************************************************************************************
  * FUNCTION: handleChangeScreen
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Updates the `currentView` variable to switch to a new screen component.
- *              - Accepts a Vue component as a parameter.
- *              - Triggers re-rendering of the displayed screen in the tablet.
+ * DESCRIPTION: Switches the active screen by name.
+ *              - Accepts the screen name (key of `views`), not a component.
+ *              - Saves the previous screen in the store to support Back navigation.
+ *              - Updates `redirectStore.current`; the watcher re-renders `currentView`.
  * ***************************************************************************************
- * DESCRIPCIÓN: Actualiza la variable `currentView` para cambiar a una nueva vista o componente.
- *              - Acepta un componente Vue como parámetro.
- *              - Provoca el re-renderizado de la pantalla mostrada en la tablet.
+ * DESCRIPCIÓN: Cambia la pantalla activa por nombre.
+ *              - Recibe el nombre de la vista (key de `views`), no un componente.
+ *              - Guarda la pantalla anterior en el store para permitir el botón Back.
+ *              - Actualiza `redirectStore.current`; el watcher re-renderiza `currentView`.
  *****************************************************************************************/
 const handleChangeScreen = (newView: keyof typeof views): void => {
+  lastScreen.changeLastScreen(newView)
   currentView.value = views[newView] || Init
+  redirectStore.current = newView
+}
+
+/*****************************************************************************************
+ * FUNCTION: toReturn
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles Back navigation logic.
+ *              - If the last screen differs from the current one, navigates back to it.
+ *              - If both are the same, resets the flow to 'Init'.
+ *              - Ensures that the user can always return to a valid screen state.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Maneja la lógica de navegación al presionar Back.
+ *              - Si la última pantalla difiere de la actual, navega hacia ella.
+ *              - Si ambas coinciden, reinicia el flujo a 'Init'.
+ *              - Garantiza que el usuario siempre regrese a un estado de pantalla válido.
+ *****************************************************************************************/
+const toReturn = (): void => {
+  if (lastScreen.lastScreen !== redirectStore.current) {
+    redirectStore.current = lastScreen.lastScreen
+  } else {
+    lastScreen.changeLastScreen('Init')
+    redirectStore.current = 'Init'
+  }
 }
 
 /*****************************************************************************************

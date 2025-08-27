@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { ref, onMounted, onBeforeUnmount, createApp } from 'vue'
+import { provide, ref, onMounted, onBeforeUnmount, createApp } from 'vue'
 import TabletContent from './TabletContent.vue'
 import skyTexture from '@/assets/textures/sky.png'
 
@@ -84,6 +84,8 @@ const endFov: number = 35 // FOV final
 let startTime: number | null = null
 let rotationStartedAt: number | null = null
 
+const data = ref({})
+
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
@@ -100,12 +102,61 @@ let rotationStartedAt: number | null = null
  *              - Establecer `isLoading` en falso.
  *              - Establecer `showPreloader` en falso.
  *****************************************************************************************/
-onMounted((): void => {
-  const onLoad = () => {
-    isLoading.value = false
-    showPreloader.value = false
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onMounted
+ * AUTHOR: Muriel Vitale
+ * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
+ *              Performs the following tasks:
+ *              1. Logs "Cargando Data" to the console.
+ *              2. Loads multiple JSON data files in parallel (about, contact, experience,
+ *                 projects, skills) using dynamic imports.
+ *              3. Populates the reactive `data` object with the loaded JSON content.
+ *              4. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
+ *              5. Hides the loading indicators by:
+ *                 - Setting `isLoading` to false.
+ *                 - Setting `showPreloader` to false.
+ *
+ * DESCRIPCIÓN: Hook del ciclo de vida de Vue que se ejecuta cuando el componente se monta.
+ *              Realiza las siguientes tareas:
+ *              1. Muestra "Cargando Data" en la consola.
+ *              2. Carga múltiples archivos JSON en paralelo (about, contact, experience,
+ *                 projects, skills) usando imports dinámicos.
+ *              3. Llena el objeto reactivo `data` con el contenido de los JSON.
+ *              4. Espera al evento `load` de la ventana para asegurar que todos los recursos
+ *                 (incluyendo imágenes) estén completamente cargados.
+ *              5. Oculta los indicadores de carga al:
+ *                 - Establecer `isLoading` en falso.
+ *                 - Establecer `showPreloader` en falso.
+ *****************************************************************************************/
+onMounted(async () => {
+  // console.log('Cargando Data')
+
+  const [about, contact, experience, projects, skills] = await Promise.all([
+    import('@/data/about.json'),
+    import('@/data/contact.json'),
+    import('@/data/experience.json'),
+    import('@/data/projects.json'),
+    import('@/data/skills.json'),
+  ])
+
+  data.value = {
+    about: about.default,
+    contact: contact.default,
+    experience: experience.default,
+    projects: projects.default,
+    skills: skills.default,
   }
-  window.addEventListener('load', onLoad, { once: true })
+  await new Promise<void>((resolve) => {
+    if (document.readyState === 'complete') {
+      resolve()
+    } else {
+      window.addEventListener('load', () => resolve(), { once: true })
+    }
+  })
+
+  isLoading.value = false
+  showPreloader.value = false
+  // console.log('Carga completada')
 })
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
@@ -653,7 +704,7 @@ function updateOverlayPosition(): void {
 
   const margin: number = 5
   const pixelWidth: number = Math.abs(x2 - x1) - margin
-  const pixelHeight: number = Math.abs(y2 - y1) - margin
+  const pixelHeight: number = Math.abs(y2 - y1) - 3 * margin
 
   const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
   if (overlay) {
@@ -731,9 +782,11 @@ function startAnimation(time: DOMHighResTimeStamp): void {
   if (elapsedTime < totalDuration) {
     requestAnimationFrame(startAnimation)
   } else {
-    console.log('finalizo')
+    // console.log('finalizo')
   }
 }
+
+provide('data', data)
 </script>
 
 <style scoped lang="scss">
