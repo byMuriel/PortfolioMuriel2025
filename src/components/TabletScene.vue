@@ -26,36 +26,32 @@
   </div>
 
   <!-- Tablet Screen -->
-  <div
-    id="screen-overlay"
-    class="overlay overlay-shadow"
-    :class="{ 'fade-in-screen': showTabletContent }"
-  >
-    <TabletContent v-if="showTabletContent" />
+  <div id="screen-overlay" :class="overlayClass">
+    <transition name="fade" appear>
+      <TabletContent v-if="showTabletContent" />
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { provide, ref, onMounted, onBeforeUnmount, createApp } from 'vue'
+import { provide, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import TabletContent from './TabletContent.vue'
-import skyTexture from '@/assets/textures/sky.png'
-
+const isMobile = window.matchMedia('(max-width: 420px)').matches
 const isLoading = ref<boolean>(true)
 const showPreloader = ref<boolean>(true)
 const startContainer = ref<boolean>(true)
 const container = ref<HTMLDivElement | null>(null)
 const showTabletContent = ref<boolean>(false)
+const overlayClass = ref<string>('overlay overlay-shadow')
 
 let renderer!: THREE.WebGLRenderer
 let scene!: THREE.Scene
 let camera!: THREE.PerspectiveCamera
-
-let animationId: number | undefined
 let screenMaterial: THREE.MeshBasicMaterial | null = null
-type ScreenMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>
 let screen: THREE.Mesh<RoundedBoxGeometry, THREE.MeshBasicMaterial> | null = null
+let animationId: number | undefined
 let overlayShown: boolean = false
 const tabletGroup = new THREE.Group()
 
@@ -77,60 +73,65 @@ let rightLight: THREE.SpotLight | null = null
 const colorWhite: THREE.ColorRepresentation = 0xfffcfe
 
 // Variables para la animación
-const startPos = new THREE.Vector3(-15, 30, 30) // Posición inicial
-const endPos = new THREE.Vector3(0, 0, 20) // Posición final
+let startPos: THREE.Vector3 // Posición inicial
+let endPos: THREE.Vector3 // Posición final  // Posición final
 const startFov: number = 75 // FOV inicial
 const endFov: number = 35 // FOV final
 let startTime: number | null = null
 let rotationStartedAt: number | null = null
 
+// Animation
+let durationRotation: number
+let durationCameraZoom: number
+let spin: number
+if (isMobile) {
+  durationRotation = 1.8
+  durationCameraZoom = 1.6
+  spin = 0
+  startPos = new THREE.Vector3(-15, 30, 30)
+  endPos = new THREE.Vector3(0, 0, 20)
+} else {
+  durationRotation = 1.7
+  durationCameraZoom = 2.1
+  spin = 2
+  startPos = new THREE.Vector3(-15, 30, -30)
+  endPos = new THREE.Vector3(0, 0, 20)
+}
+const totalDuration: number = durationRotation + durationCameraZoom
+const recorteTiempoParaMostrarLaPantalla: number = 1.7
+let endPos2: THREE.Vector3 | null = null // destino del segundo zoom (solo mobile)
+let secondZoomTriggered = false
+let secondZoomStartedAt: number | null = null // tiempo de inicio del segundo zoom
+const mobileSecondZoomDuration = 0.3 // duración del segundo zoom
+const mobileSecondZoomFov = 28 // FOV final en el segundo zoom
+const mobileSecondZoomMargin = 0.6 // qué tan cerca de la pantalla
 const data = ref({})
 
-/*****************************************************************************************
- * LIFECYCLE HOOK: onMounted
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
- *              Sets up a listener for the `load` event on the window object.
- *              Once the window is fully loaded, it hides the loading states by:
- *              - Setting `isLoading` to false.
- *              - Setting `showPreloader` to false.
- * **************************************************************************************
- * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta cuando el componente es montado.
- *              Establece un listener para el evento `load` de la ventana.
- *              Una vez que la ventana está completamente cargada, oculta los indicadores
- *              de carga al:
- *              - Establecer `isLoading` en falso.
- *              - Establecer `showPreloader` en falso.
- *****************************************************************************************/
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale
  * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
  *              Performs the following tasks:
- *              1. Logs "Cargando Data" to the console.
- *              2. Loads multiple JSON data files in parallel (about, contact, experience,
+ *              1. Loads multiple JSON data files in parallel (about, contact, experience,
  *                 projects, skills) using dynamic imports.
- *              3. Populates the reactive `data` object with the loaded JSON content.
- *              4. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
- *              5. Hides the loading indicators by:
+ *              2. Populates the reactive `data` object with the loaded JSON content.
+ *              3. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
+ *              4. Hides the loading indicators by:
  *                 - Setting `isLoading` to false.
  *                 - Setting `showPreloader` to false.
  *
  * DESCRIPCIÓN: Hook del ciclo de vida de Vue que se ejecuta cuando el componente se monta.
  *              Realiza las siguientes tareas:
- *              1. Muestra "Cargando Data" en la consola.
- *              2. Carga múltiples archivos JSON en paralelo (about, contact, experience,
+ *              1. Carga múltiples archivos JSON en paralelo (about, contact, experience,
  *                 projects, skills) usando imports dinámicos.
- *              3. Llena el objeto reactivo `data` con el contenido de los JSON.
- *              4. Espera al evento `load` de la ventana para asegurar que todos los recursos
+ *              2. Llena el objeto reactivo `data` con el contenido de los JSON.
+ *              3. Espera al evento `load` de la ventana para asegurar que todos los recursos
  *                 (incluyendo imágenes) estén completamente cargados.
- *              5. Oculta los indicadores de carga al:
+ *              4. Oculta los indicadores de carga al:
  *                 - Establecer `isLoading` en falso.
  *                 - Establecer `showPreloader` en falso.
  *****************************************************************************************/
 onMounted(async () => {
-  // console.log('Cargando Data')
-
   const [about, contact, experience, projects, skills] = await Promise.all([
     import('@/data/about.json'),
     import('@/data/contact.json'),
@@ -156,7 +157,6 @@ onMounted(async () => {
 
   isLoading.value = false
   showPreloader.value = false
-  // console.log('Carga completada')
 })
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
@@ -182,6 +182,53 @@ onBeforeUnmount((): void => {
     el.removeChild(renderer.domElement)
   }
 })
+/*****************************************************************************************
+ * FUNCTION: getScreenWorldPos
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the world-space position of the center of the tablet's screen mesh.
+ *              - Forces a matrix world update to ensure accurate transforms.
+ *              - Applies the screen's world matrix to the local origin (0,0,0).
+ * RETURNS: THREE.Vector3 → Center position of the screen in world coordinates.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Retorna la posición en coordenadas de mundo del centro del mesh de la pantalla.
+ *              - Fuerza la actualización de la matriz de mundo para garantizar transformaciones correctas.
+ *              - Aplica la matriz de mundo de la pantalla al origen local (0,0,0).
+ * RETORNA: THREE.Vector3 → Posición central de la pantalla en coordenadas de mundo.
+ *****************************************************************************************/
+function getScreenWorldPos(): THREE.Vector3 {
+  const p = new THREE.Vector3(0, 0, 0)
+  screen!.updateMatrixWorld(true)
+  p.applyMatrix4(screen!.matrixWorld)
+  return p
+}
+/*****************************************************************************************
+ * FUNCTION: fitSceneForDevice
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Adjusts the final camera distance (endPos.z) to fit the tablet fully on screen,
+ *              considering device aspect ratio and a configurable margin.
+ *              - Computes the required distance using vertical FOV and tablet half-extents.
+ *              - Chooses the max distance needed by width/height to avoid clipping.
+ * PARAMETERS:
+ *   - margin (Number, default: 1.15): Extra space multiplier to keep safe padding around the tablet.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Ajusta la distancia final de la cámara (endPos.z) para encuadrar la tablet
+ *              completa en pantalla, considerando el aspect ratio del dispositivo y un margen.
+ *              - Calcula la distancia requerida usando el FOV vertical y los semiejes de la tablet.
+ *              - Toma la mayor distancia entre ancho/alto para evitar cortes.
+ * PARÁMETROS:
+ *   - margin (Número, por defecto: 1.15): Multiplicador de espacio extra como padding seguro.
+ *****************************************************************************************/
+function fitSceneForDevice(margin: number = 1.15): void {
+  if (!camera || !renderer) return
+  const aspect = window.innerWidth / window.innerHeight
+  const vFov = THREE.MathUtils.degToRad(endFov)
+  const halfH = outerHeight / 2
+  const halfW = outerWidth / 2
+  const distHeight = halfH / Math.tan(vFov / 2)
+  const distWidth = halfW / (Math.tan(vFov / 2) * aspect)
+  const distance = Math.max(distHeight, distWidth) * margin
+  endPos.set(0, 0, distance)
+}
 /*****************************************************************************************
  * FUNCTION: onPreloaderLeave
  * AUTHOR: Muriel Vitale.
@@ -228,8 +275,8 @@ function start(): void {
   initScene()
   createRoomEnvironment()
   createTablet()
+  fitSceneForDevice()
   addTopSpotLights()
-  /* addPrincipalLights() */
   renderer.render(scene, camera)
   requestAnimationFrame(startAnimation)
 }
@@ -271,9 +318,10 @@ function initScene(): void {
   const colorFondo: string = '#000000' // gris oscuro '#222222' // blanco 0xffffff
   renderer = new THREE.WebGLRenderer({
     antialias: true,
-    preserveDrawingBuffer: true, // activa para mantener el buffer
+    preserveDrawingBuffer: false, // activa para mantener el buffer
   })
 
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(width, height)
   renderer.setClearColor(colorFondo)
   container.value.appendChild(renderer.domElement)
@@ -449,6 +497,11 @@ function createTablet(): void {
   tabletGroup.add(screenTarget)
 
   scene.add(tabletGroup)
+
+  if (isMobile) {
+    tabletGroup.rotation.set(0, Math.PI, 0)
+  }
+
   camera.lookAt(tabletGroup.position)
 }
 /*****************************************************************************************
@@ -602,7 +655,7 @@ function addTopSpotLights(): void {
  *****************************************************************************************/
 function animateTabletRotation(elapsedTime: number, durationRotation: number): void {
   const t: number = Math.min(elapsedTime / durationRotation, 1)
-  tabletGroup.rotation.y = Math.PI * 2 * t
+  tabletGroup.rotation.y = Math.PI * spin * t
 }
 /*****************************************************************************************
  * FUNCTION: animateCameraZoom
@@ -652,20 +705,17 @@ function animateCameraZoom(elapsedTime: number, delay: number, durationCameraZoo
 /*****************************************************************************************
  * FUNCTION: updateOverlayPosition
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Projects the 3D screen mesh position and dimensions to 2D screen space and
- *              updates the position and size of the HTML overlay (`#screen-overlay`) accordingly.
- *              - Computes the 3D positions of the screen's center, top-left, and bottom-right corners.
- *              - Converts those positions to world coordinates and then projects them into 2D screen space.
- *              - Calculates the pixel coordinates and dimensions for the overlay.
- *              - Updates the overlay’s CSS to match the projected area of the 3D screen.
+ * DESCRIPTION: Projects the 3D tablet screen area into 2D screen space and updates the
+ *              HTML overlay (#screen-overlay) to match position and size in pixels.
+ *              - Computes world coords for center, top-left, and bottom-right of the 3D screen.
+ *              - Projects them with the active camera and derives pixel bounds.
+ *              - Applies computed left/top/width/height to the overlay element.
  * ***************************************************************************************
- * DESCRIPCIÓN: Proyecta la posición y dimensiones del mesh de la pantalla 3D al espacio
- *              de pantalla 2D, y actualiza en consecuencia la posición y tamaño del
- *              overlay HTML (`#screen-overlay`).
- *              - Calcula las posiciones 3D del centro, esquina superior izquierda y esquina inferior derecha de la pantalla.
- *              - Convierte esas posiciones a coordenadas del mundo y luego las proyecta al espacio de pantalla 2D.
- *              - Calcula las coordenadas en píxeles y dimensiones del área proyectada.
- *              - Actualiza los estilos CSS del overlay para que coincidan con la pantalla 3D.
+ * DESCRIPCIÓN: Proyecta el área de la pantalla 3D de la tablet al espacio 2D y actualiza
+ *              el overlay HTML (#screen-overlay) para que coincida en posición y tamaño.
+ *              - Calcula coordenadas de mundo del centro, esquina sup. izq. y esquina inf. der.
+ *              - Las proyecta con la cámara activa y obtiene límites en píxeles.
+ *              - Asigna left/top/width/height calculados al elemento overlay.
  *****************************************************************************************/
 function updateOverlayPosition(): void {
   if (!screen || !camera || !renderer) return
@@ -676,19 +726,13 @@ function updateOverlayPosition(): void {
 
   const widthHalf: number = renderer.domElement.clientWidth / 2
   const heightHalf: number = renderer.domElement.clientHeight / 2
-
-  // Puntos extremos en el espacio local del mesh
   const center: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
   const topLeft: THREE.Vector3 = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
   const bottomRight: THREE.Vector3 = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
-
-  // Convertir a coordenadas mundiales
   screen.updateMatrixWorld()
   center.applyMatrix4(screen.matrixWorld)
   topLeft.applyMatrix4(screen.matrixWorld)
   bottomRight.applyMatrix4(screen.matrixWorld)
-
-  // Proyectar al espacio de pantalla
   center.project(camera)
   topLeft.project(camera)
   bottomRight.project(camera)
@@ -713,16 +757,69 @@ function updateOverlayPosition(): void {
     overlay.style.width = `${pixelWidth}px`
     overlay.style.height = `${pixelHeight}px`
   }
+}
+/*****************************************************************************************
+ * FUNCTION: updateOverlayMobilePosition
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Stretches the HTML overlay to cover the full viewport on mobile devices.
+ *              - Positions overlay fixed at (0,0) and removes transforms.
+ *              - Sets width/height to window dimensions.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Ajusta el overlay HTML para cubrir todo el viewport en dispositivos móviles.
+ *              - Posiciona el overlay como fixed en (0,0) y elimina transforms.
+ *              - Define ancho/alto iguales a las dimensiones de la ventana.
+ *****************************************************************************************/
+function updateOverlayMobilePosition(): void {
+  const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
+  if (!overlay) return
+  const w = window.innerWidth
+  const h = window.innerHeight
+  overlay.style.position = 'fixed'
+  overlay.style.left = `${0}px`
+  overlay.style.top = `${0}px`
+  overlay.style.width = `${w}px`
+  overlay.style.height = `${h}px`
+  overlay.style.transform = 'none'
+}
+/*****************************************************************************************
+ * FUNCTION: animateSecondZoom
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Performs a short, secondary zoom-in (mobile only) from endPos to endPos2,
+ *              while narrowing the camera FOV, then reveals the HTML overlay/content.
+ *              - Interpolates camera position and FOV over a small duration.
+ *              - Keeps camera looking at the tablet group.
+ *              - When finished, triggers overlay sizing for mobile and shows content.
+ * PARAMETERS:
+ *   - elapsedTime (Number): Seconds since the intro animation started.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Ejecuta un segundo zoom corto (solo móvil) desde endPos a endPos2,
+ *              ajustando el FOV, y luego muestra el overlay/contenido.
+ *              - Interpola posición y FOV de la cámara en una duración breve.
+ *              - Mantiene la cámara apuntando al grupo de la tablet.
+ *              - Al finalizar, ajusta el overlay en móvil y muestra el contenido.
+ * PARÁMETROS:
+ *   - elapsedTime (Número): Segundos desde el inicio de la animación de introducción.
+ *****************************************************************************************/
+function animateSecondZoom(elapsedTime: number): void {
+  if (!endPos2) return
+  if (secondZoomStartedAt === null) return
 
-  // if (screenWidth <= 480) {
-  //   xValue = canvasRect.width / 2 - 3.5
-  // } else if (screenWidth <= 768) {
-  //   xValue = canvasRect.width / 2 - 5
-  // } else if (screenWidth <= 1024) {
-  //   xValue = canvasRect.width / 2 - 10
-  // } else {
-  //   xValue = canvasRect.width / 2 - 17
-  // }
+  const t = Math.min((elapsedTime - secondZoomStartedAt) / mobileSecondZoomDuration, 1)
+  const from = endPos
+  const to = endPos2
+
+  camera.position.lerpVectors(from, to, t)
+  camera.fov = endFov + (mobileSecondZoomFov - endFov) * t
+  camera.updateProjectionMatrix()
+  camera.lookAt(tabletGroup.position)
+
+  if (isMobile && t >= 1 && !overlayShown) {
+    setTimeout(() => {
+      updateOverlayMobilePosition()
+      showTabletContent.value = true
+      overlayShown = true
+    }, 400)
+  }
 }
 /*****************************************************************************************
  * FUNCTION: startAnimation
@@ -755,34 +852,51 @@ function updateOverlayPosition(): void {
  *****************************************************************************************/
 function startAnimation(time: DOMHighResTimeStamp): void {
   if (startTime === null) startTime = time
-
   const elapsedTime: number = (time - startTime) / 1000
-  const durationRotation: number = 2.5
-  const durationCameraZoom: number = 1.8
-  const totalDuration: number = durationRotation + durationCameraZoom
-  const recorteTiempoParaMostrarLaPantalla: number = 1.7
 
+  // 1) Rotación + primer zoom
   animateTabletRotation(elapsedTime, durationRotation)
-
   if (rotationStartedAt === null) rotationStartedAt = elapsedTime
   animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom)
 
+  // 2) Disparo de overlay y segundo zoom (solo mobile)
+  if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
+    if (!isMobile) {
+      updateOverlayPosition()
+      showTabletContent.value = true
+      overlayShown = true
+    }
+
+    if (isMobile && !secondZoomTriggered) {
+      const p = getScreenWorldPos()
+      endPos2 = new THREE.Vector3(p.x, p.y, p.z + mobileSecondZoomMargin)
+      secondZoomStartedAt = elapsedTime
+      secondZoomTriggered = true
+    }
+  }
+
+  // 3) Segundo zoom (si está activo)
+  if (isMobile && secondZoomTriggered && endPos2) {
+    animateSecondZoom(elapsedTime)
+  }
+
+  // 4) Render SIEMPRE al final, después de mover cámara/rotar
   if (!renderer || !scene || !camera) {
     animationId = requestAnimationFrame(startAnimation)
     return
   }
   renderer.render(scene, camera)
 
-  if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
-    updateOverlayPosition()
-    showTabletContent.value = true
-    overlayShown = true
-  }
+  // 5) ÚNICA condición para continuar el loop
+  const stillInIntro = elapsedTime < totalDuration
+  const inSecondZoom =
+    isMobile &&
+    secondZoomTriggered &&
+    secondZoomStartedAt !== null &&
+    elapsedTime - secondZoomStartedAt < mobileSecondZoomDuration
 
-  if (elapsedTime < totalDuration) {
+  if (stillInIntro || inSecondZoom) {
     requestAnimationFrame(startAnimation)
-  } else {
-    // console.log('finalizo')
   }
 }
 
@@ -995,7 +1109,7 @@ canvas {
   z-index: 10;
   width: 300px;
   height: 200px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(12, 12, 12, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1009,20 +1123,18 @@ canvas {
   transform: translate(-50%, -50%);
 }
 
-.fade-in-screen {
-  animation: screenOn 0.8s ease forwards;
+:deep(.fade-enter-from),
+:deep(.fade-leave-to) {
+  opacity: 0;
 }
 
-@keyframes screenOn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.03);
-    filter: brightness(0.3);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-    filter: brightness(1);
-  }
+:deep(.fade-enter-active),
+:deep(.fade-leave-active),
+:deep(.fade-appear-active) {
+  transition: opacity 1.5s ease;
+}
+
+:deep(.fade-appear-from) {
+  opacity: 0;
 }
 </style>

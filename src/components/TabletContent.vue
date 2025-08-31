@@ -52,7 +52,6 @@ const views: Record<ScreenName, Component> = {
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
-
 /*****************************************************************************************
  * VARIABLE: currentView
  * AUTHOR: Muriel Vitale.
@@ -65,7 +64,6 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
  *              - Se actualiza dinámicamente mediante `handleChangeScreen()`.
  *****************************************************************************************/
 const currentView: ShallowRef<Component> = shallowRef(Init as Component)
-
 /*****************************************************************************************
  * WATCHER: redirectStore.current
  * AUTHOR: Muriel Vitale.
@@ -90,7 +88,6 @@ watch(
   },
   { immediate: true },
 )
-
 /*****************************************************************************************
  * FUNCTION: handleChangeScreen
  * AUTHOR: Muriel Vitale.
@@ -109,7 +106,6 @@ const handleChangeScreen = (newView: keyof typeof views): void => {
   currentView.value = views[newView] || Init
   redirectStore.current = newView
 }
-
 /*****************************************************************************************
  * FUNCTION: toReturn
  * AUTHOR: Muriel Vitale.
@@ -131,7 +127,6 @@ const toReturn = (): void => {
     redirectStore.current = 'Init'
   }
 }
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
@@ -154,12 +149,14 @@ defineExpose({
   position: relative;
   width: 100%;
   height: 100%;
-  background-color: white;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: rgb(14, 13, 13);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 .back-button {
-  z-index: 9999; /* más alto que cualquier imagen */
+  z-index: 9999;
 }
 </style>

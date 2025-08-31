@@ -206,9 +206,12 @@ onBeforeUnmount((): void => {
 
 <style scoped>
 .initContent {
+  position: relative;
   pointer-events: auto;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
+
   background-image: url('@/assets/textures/wallpaperTablet.png');
   background-size: cover;
   background-position: center;
@@ -220,9 +223,9 @@ onBeforeUnmount((): void => {
   /* box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8); */
 }
 .clock-container {
-  width: 18rem;
-  height: 7rem;
-  background-color: rgba(253, 251, 251, 0.3);
+  width: 90%;
+  height: 25%;
+  background-color: rgba(3, 3, 3, 0.3);
   box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.5);
   border-radius: 1rem;
   margin: 2rem auto 0 auto;
@@ -260,7 +263,7 @@ onBeforeUnmount((): void => {
   padding: 1rem;
 }
 .tamanioIconoApp {
-  width: 6rem;
+  width: 100%;
 }
 .app-button {
   background: none;

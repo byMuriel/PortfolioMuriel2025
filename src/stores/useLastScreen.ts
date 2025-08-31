@@ -16,7 +16,6 @@ export const useLastScreen = defineStore('lastScreen', {
   }),
   actions: {
     changeLastScreen(screen: ScreenName) {
-      //   console.log(screen)
       this.lastScreen = screen
     },
   },

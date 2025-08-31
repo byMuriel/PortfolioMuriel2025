@@ -1,6 +1,9 @@
 <!-- src/components/Projects.vue -->
 <template>
-  <div class="container-fluid ProjectsApplication m-0 p-0 mt-5 pt-3">
+  <div class="container-fluid ProjectsApplication m-0 p-0">
+    <div class="tools">
+      <PillSearch></PillSearch>
+    </div>
     <!-- CurrentProject -->
     <transition name="fade" mode="out-in">
       <img
@@ -77,6 +80,7 @@
 
 <script setup lang="ts">
 import { inject, ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+import PillSearch from '@/components/CommonComponents/PillSearch.vue'
 const data = inject('data')
 const rawProjects = computed(() => data.value.projects)
 
@@ -332,6 +336,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.tools {
+  flex: 0 0 auto;
+  height: 3.5rem;
+  z-index: 10;
+  width: 85%;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  margin-top: 0.5rem;
+  margin-left: 10%;
+  margin-right: 0.5rem;
+}
 .whiteSpace-text {
   white-space: pre-line;
 }

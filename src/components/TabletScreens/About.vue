@@ -32,8 +32,12 @@
         <i class="bi bi-chat-quote-fill" style="font-size: 1.5rem; color: grey"></i>
         <p class="textIcon">Contact</p>
       </span>
-      <a :href="linkLinkedIn" target="_blank" rel="noopener noreferrer">
-        <span class="toolButton bluePill">View LinkedIn Profile</span>
+      <a class="m-0 p-0" :href="linkLinkedIn" target="_blank" rel="noopener noreferrer">
+        <PillButton
+          class="toolButton"
+          replaceClass="bluePill"
+          text="View LinkedIn Profile"
+        ></PillButton>
       </a>
     </div>
     <!-- Content -->
@@ -43,7 +47,8 @@
         <img class="fondoAbout" src="/src/assets/images/AboutMe/fondo.jpg" alt="" />
         <img class="murielImg" src="/src/assets/images/AboutMe/muriel.png" alt="" />
         <h1 class="name m-0 p-0">
-          {{ AboutContent.intro }} <span class="font07rem">(She/Her)</span>
+          {{ AboutContent.intro }}
+          <!-- <span class="font07rem">(She/Her)</span> -->
         </h1>
         <img
           class="verificationImg m-0 p-0"
@@ -74,11 +79,18 @@
           <p class="about-text" v-if="expanded[index]">
             {{ paragraphs[index] }}
           </p>
-
-          <span class="pill" v-if="!expanded[index]" @click="showSection(index)">See More</span>
+          <PillButton
+            text="See More"
+            v-if="!expanded[index]"
+            @click="showSection(index)"
+          ></PillButton>
         </div>
-
-        <span class="pill less" v-if="expanded[index]" @click="hideSection(index)">See Less</span>
+        <PillButton
+          text="See Less"
+          class="less"
+          v-if="expanded[index]"
+          @click="hideSection(index)"
+        ></PillButton>
       </div>
     </div>
   </div>
@@ -87,6 +99,7 @@
 <script setup lang="ts">
 import { inject, ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
 import { useRedirectStore } from '@/stores/useRedirect'
+import PillButton from '@/components/CommonComponents/PillButton.vue'
 import LinkLinkedIn from '@/data/contact.json'
 
 type StringDict = Record<string, string>
@@ -105,30 +118,13 @@ interface AboutContentShape {
 const screen = ref<HTMLDivElement | null>(null)
 const more = ref<boolean>(false)
 const expanded = ref<boolean[]>([])
-
-// Store
 const redirectStore = useRedirectStore()
 
-/*****************************************************************************************
- * FUNCTION: go
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles navigation from the About component to another screen.
- * ***************************************************************************************
- * FUNCIÓN: go
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
- *****************************************************************************************/
-function go(to: string) {
-  redirectStore.redirect(to)
-}
-
-// Datos inyectados
 const data = inject<Ref<{ about: AboutContentShape }>>('data')
 if (!data) {
   throw new Error('No se proporcionó "data" via provide().')
 }
 const aboutData = computed(() => data.value.about)
-
 /*****************************************************************************************
  * CONSTANT: AboutContent
  * AUTHOR: Muriel Vitale.
@@ -145,7 +141,6 @@ const aboutData = computed(() => data.value.about)
 const AboutContent: ComputedRef<AboutContentShape> = computed(
   () => aboutData.value as AboutContentShape,
 )
-
 /*****************************************************************************************
  * CONSTANT: linkLinkedIn
  * AUTHOR: Muriel Vitale.
@@ -160,13 +155,10 @@ const AboutContent: ComputedRef<AboutContentShape> = computed(
  *              - Provee un string tipado para uso seguro en el template.
  *****************************************************************************************/
 const linkLinkedIn: ComputedRef<string> = computed(() => LinkLinkedIn.linkedIn.link)
-
-// Utilidades
 const toArray = (v: MaybeList): string[] => {
   if (!v) return []
   return Array.isArray(v) ? v : Object.values(v)
 }
-
 /*****************************************************************************************
  * CONSTANT: titles
  * AUTHOR: Muriel Vitale.
@@ -181,7 +173,6 @@ const toArray = (v: MaybeList): string[] => {
  *              - Entrega una estructura tipada y lista para iterar en el template.
  *****************************************************************************************/
 const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMeTitles))
-
 /*****************************************************************************************
  * CONSTANT: paragraphs
  * AUTHOR: Muriel Vitale.
@@ -198,6 +189,18 @@ const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.
 const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMe))
 
 /*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation from the About component to another screen.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
+ *****************************************************************************************/
+function go(to: string) {
+  redirectStore.redirect(to)
+}
+/*****************************************************************************************
  * FUNCTION: setMore
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Sets the "more" flag to show or hide extra content.
@@ -209,7 +212,6 @@ const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.va
 function setMore(value: boolean): void {
   more.value = !!value
 }
-
 /*****************************************************************************************
  * FUNCTION: showSection
  * AUTHOR: Muriel Vitale.
@@ -221,7 +223,6 @@ function showSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = true
 }
-
 /*****************************************************************************************
  * FUNCTION: hideSection
  * AUTHOR: Muriel Vitale.
@@ -233,7 +234,6 @@ function hideSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = false
 }
-
 /*****************************************************************************************
  * FUNCTION: toggleSection
  * AUTHOR: Muriel Vitale.
@@ -245,7 +245,6 @@ function toggleSection(i: number): void {
   if (i < 0 || i >= expanded.value.length) return
   expanded.value[i] = !expanded.value[i]
 }
-
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
@@ -258,7 +257,6 @@ function toggleSection(i: number): void {
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
-
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
@@ -274,7 +272,6 @@ onMounted(() => {
   //Primer elemento abierto y el resto cerrado
   expanded.value = titles.value.map((_, i) => i === 0)
 })
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
@@ -333,7 +330,7 @@ defineExpose<{
   cursor: pointer;
 }
 .bi {
-  height: 1.6rem;
+  height: 10%;
 }
 .tools span {
   display: flex;
@@ -341,26 +338,26 @@ defineExpose<{
   align-items: center;
   gap: 0rem;
 }
+.tools .iconContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.tools .iconContainer i {
+  display: block;
+  line-height: 1;
+}
 .logoPrinc {
-  width: 3rem;
+  width: 15%;
 }
 .textIcon {
-  position: static;
-  top: 0.5rem;
-  color: grey;
+  margin: 0;
+  padding: 0;
   font-size: 0.55rem;
-  margin: 0;
-}
-.bluePill {
-  background-color: rgb(64, 122, 231);
-  border-radius: 5rem;
-  color: white;
-  width: fit-content;
-  height: fit-content;
-  margin: 0;
-  padding: 0.3rem 1rem;
-  font-size: 0.8rem;
-  left: 17rem;
+  line-height: 0.01rem;
+  color: grey;
 }
 .containerAbout {
   flex: 1;
@@ -429,7 +426,7 @@ defineExpose<{
 .verificationImg {
   position: relative;
   top: -11.1rem;
-  left: 22.5rem;
+  left: 19rem;
   width: 1.3rem;
   height: 1.3rem;
 }
@@ -444,40 +441,6 @@ defineExpose<{
 }
 .font07rem {
   font-size: 0.7rem;
-}
-.pill {
-  border: 0;
-  border-radius: 9999px;
-  padding: 0.3rem 1.5rem;
-  color: rgb(64, 122, 231);
-  box-shadow: inset 0 0 0 1.6px rgb(64, 122, 231);
-  background: transparent;
-  transition:
-    box-shadow 0.18s ease,
-    background-color 0.18s ease,
-    color 0.18s ease;
-  width: fit-content;
-  height: fit-content;
-  margin: 0;
-  padding: 0.3rem 1.5rem;
-  font-size: 0.8rem;
-  position: relative;
-  left: 17rem;
-}
-.pill:hover {
-  box-shadow: inset 0 0 0 2.4px rgb(64, 122, 231);
-  background: rgba(64, 122, 231, 0.08);
-  cursor: pointer;
-}
-.pill.less {
-  border: 0;
-  box-shadow: inset 0 0 0 1.6px rgb(83, 83, 83);
-  color: rgb(83, 83, 83);
-}
-.less:hover {
-  box-shadow: inset 0 0 0 2.4px rgb(58, 57, 57);
-  background: rgba(110, 110, 110, 0.08);
-  cursor: pointer;
 }
 .aboutCard {
   width: 95%;
