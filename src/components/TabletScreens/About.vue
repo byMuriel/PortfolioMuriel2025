@@ -296,9 +296,10 @@ defineExpose<{
 .aboutApplication {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   pointer-events: auto;
-  width: 100%;
+
   justify-content: start;
   align-items: center;
   font-family: sans-serif;

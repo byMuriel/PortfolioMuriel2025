@@ -11,6 +11,13 @@
       "3": "/src/assets/images/MarieEventPlanner/MarieEP-Eventos2.jpg",
       "4": "/src/assets/images/MarieEventPlanner/MarieEP-Contacto.jpg",
       "5": "/src/assets/images/MarieEventPlanner/MarieEP-Presupuesto.jpg"
+    },
+    "tech": {
+      "HTML": "lorem",
+      "CSS": "lorem",
+      "JavaScript": "lorem",
+      "Bootstrap": "lorem",
+      "Materialize": "lorem"
     }
   },
   "1": {
@@ -24,6 +31,13 @@
       "2": "/src/assets/images/AlekoExpress/AlekoExpress-servicios1.jpg",
       "3": "/src/assets/images/AlekoExpress/AlekoExpress-contacto.jpg",
       "4": "/src/assets/images/AlekoExpress/AlekoExpress-presupuestos1.jpg"
+    },
+    "tech": {
+      "HTML": "lorem",
+      "CSS": "lorem",
+      "JavaScript": "lorem",
+      "Bootstrap": "lorem",
+      "Materialize": "lorem"
     }
   },
   "2": {
@@ -37,6 +51,13 @@
       "2": "/src/assets/images/OdIsobertM/Od.IsobertMujica-creacionCitasUsuario.jpg",
       "3": "/src/assets/images/OdIsobertM/Od.IsobertMujica-registro.jpg",
       "4": "/src/assets/images/OdIsobertM/Od.IsobertMujica-admin.jpg"
+    },
+    "tech": {
+      "HTML": "lorem",
+      "CSS": "lorem",
+      "JavaScript": "lorem",
+      "Bootstrap": "lorem",
+      "Materialize": "lorem"
     }
   }
 }

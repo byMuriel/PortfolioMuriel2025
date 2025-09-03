@@ -1,8 +1,23 @@
 <!-- src/components/Projects.vue -->
 <template>
   <div class="container-fluid ProjectsApplication m-0 p-0">
-    <div class="tools">
-      <PillSearch></PillSearch>
+    <div class="tools-container">
+      <img class="logoPrinc" src="@/assets/images/Projects/Logos/youMuriel.png" alt="" />
+      <div class="tools">
+        <span
+          class="toolButton iconContainer d-flex justify-content-center align-items-center"
+          @click="go('About')"
+          ><i class="bi bi-person" style="font-size: 1.5rem; color: grey"></i
+        ></span>
+        <span
+          class="toolButton iconContainer d-flex justify-content-center align-items-center"
+          @click="go('Contact')"
+          ><i class="bi bi-messenger" style="font-size: 1.5rem; color: grey"></i
+        ></span>
+        <span class="toolButton iconContainer d-flex justify-content-center align-items-center"
+          ><i class="bi bi-music-note-beamed" style="font-size: 1.5rem; color: grey"></i
+        ></span>
+      </div>
     </div>
     <!-- CurrentProject -->
     <transition name="fade" mode="out-in">
@@ -13,8 +28,9 @@
         class="img-fluid principalImg"
       />
     </transition>
-    <div class="containerPrinc p-1">
+    <div class="containerPrinc mb-3">
       <div class="m-0 text-color">
+        <!-- Description CurrentProject -->
         <h5 class="m-0 p-0 mb-1 fw-bold">{{ currentProject.name }}</h5>
         <p class="whiteSpace-text fs-7 m-0 p-0">{{ currentProject.description }}</p>
         <a
@@ -32,6 +48,37 @@
           :href="currentProject.githubRep"
           ><span class="fw-bold text-light">GitHub</span> Repository</a
         >
+        <!-- Pill Action Buttons -->
+        <div class="row mt-2 mb-2">
+          <PillText text=" 27&nbsp;&nbsp;|&nbsp;&nbsp;" type="likeDislike" />
+          <PillText @click="toogleTech" text="Tech Used" type="seeTech" />
+          <PillText text="Skills" type="skills" />
+        </div>
+        <!-- Tech Used Info -->
+        <div class="techContainer">
+          <p class="text-light m-0">
+            Tech Used &nbsp <span :style="{ color: 'grey' }">({{ techList.length }})</span> &nbsp<i
+              v-if="!showTechInfo"
+              class="bi bi-caret-down-fill desplegable"
+              @click="toogleTech()"
+            ></i>
+          </p>
+
+          <div v-if="showTechInfo" class="mt-3">
+            <div class="tech-item" v-for="([name, desc], index) in techList" :key="index">
+              <span
+                :style="{ backgroundColor: getColor(name), color: getColorText(name) }"
+                class="iconoSkill"
+              >
+                {{ name[0] }}
+              </span>
+              <span>
+                <strong>{{ name }}</strong
+                >: {{ desc }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -39,9 +86,10 @@
     <div
       v-for="(rawProjects, index) in otherProjects"
       :key="index"
-      class="containerSec d-flex mb-2"
+      class="containerSec d-flex mb-3"
     >
       <div class="container-fluid d-flex justify-content-between m-0 p-0">
+        <!-- ImagProject -->
         <img
           v-if="firstImageOf(rawProjects)"
           :src="firstImageOf(rawProjects)"
@@ -49,6 +97,7 @@
           class="secondImg selectHover m-0 p-0"
           @click="replacePrincipal(rawProjects.originalIndex)"
         />
+        <!-- TextProject -->
         <div class="secondText p-2">
           <h6
             class="m-0 p-0 fw-bold selectHover"
@@ -56,22 +105,27 @@
           >
             {{ rawProjects.name }}
           </h6>
-          <br />
-          <a
-            class="text-anchor m-0 p-0"
-            target="_blank"
-            rel="noopener noreferrer"
-            :href="rawProjects.link"
-            ><span class="fw-bold text-light">Visit </span> {{ rawProjects.link }}</a
-          >
-          <br />
-          <a
-            class="text-anchor m-0 p-0 fw-bold"
-            target="_blank"
-            rel="noopener noreferrer"
-            :href="rawProjects.githubRep"
-            ><span class="fw-bold text-light">GitHub</span> Repository</a
-          >
+          <div>
+            <p class="m-0 p-0">
+              <a
+                class="text-anchor m-0 p-0"
+                target="_blank"
+                rel="noopener noreferrer"
+                :href="rawProjects.link"
+                ><span class="fw-bold text-light">Visit </span> {{ rawProjects.link }}</a
+              >
+            </p>
+
+            <p class="m-0 p-0">
+              <a
+                class="text-anchor m-0 p-0 fw-bold"
+                target="_blank"
+                rel="noopener noreferrer"
+                :href="rawProjects.githubRep"
+                ><span class="fw-bold text-light">GitHub</span> Repository</a
+              >
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -80,10 +134,14 @@
 
 <script setup lang="ts">
 import { inject, ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
-import PillSearch from '@/components/CommonComponents/PillSearch.vue'
-const data = inject('data')
-const rawProjects = computed(() => data.value.projects)
+import PillText from '@/components/CommonComponents/PillText.vue'
+import colorSkill from '@/data/colorSkill.json'
+import { useRedirectStore } from '@/stores/useRedirect'
+const data = inject<Ref<{ projects: Record<string, Project> }>>('data')
+if (!data) throw new Error('No se proporcionó "data" via provide().')
 
+const rawProjects = computed<Record<string, Project>>(() => data.value.projects ?? {})
+const redirectStore = useRedirectStore()
 type ImageField = string[] | Record<string, string> | undefined
 
 interface Project {
@@ -93,6 +151,7 @@ interface Project {
   description?: string
   link?: string
   githubRep?: string
+  tech?: Record<string, string> | string[] | undefined
   [key: string]: unknown
 }
 const defaultProject: Project = {
@@ -102,6 +161,38 @@ const defaultProject: Project = {
   githubRep: '#',
   image: [],
   logo: null,
+}
+
+const showTechInfo: Ref<boolean> = ref(false)
+const techList = computed(() => {
+  const tech = currentProject.value?.tech
+  if (!tech) return []
+  return Object.entries(tech)
+})
+function toogleTech() {
+  console.log('hiciste click')
+}
+function getColor(name: string): string {
+  return (colorSkill as Record<string, string>)[name] || 'grey'
+}
+function getColorText(name: string): string {
+  if (name === 'JavaScript') {
+    return 'black'
+  } else {
+    return 'white'
+  }
+}
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation from the About component to another screen.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
+ *****************************************************************************************/
+function go(to: string) {
+  redirectStore.redirect(to)
 }
 
 /*****************************************************************************************
@@ -206,7 +297,6 @@ type ProjectWithLogo = ProjectBase & { logo: string | null }
  *****************************************************************************************/
 const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
   projects.value.map((p) => {
-    // ❌ Aquí necesitas .value
     const { logo: rawLogo, ...rest } = p
     const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
     return { ...(rest as ProjectBase), logo: resolved }
@@ -234,7 +324,7 @@ function firstImageOf(p: Project): string | undefined {
  * DESCRIPCIÓN: Cambia el proyecto principal mostrado y reinicia el índice de imagen.
  *****************************************************************************************/
 function replacePrincipal(index: number): void {
-  if (index < 0 || index >= projects.length) return
+  if (index < 0 || index >= projects.value.length) return
   currentImageIndex.value = 0
   currentProjectIndex.value = index
 }
@@ -336,40 +426,105 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.tools {
-  flex: 0 0 auto;
-  height: 3.5rem;
-  z-index: 10;
-  width: 85%;
+.ProjectsApplication {
   display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
   justify-content: start;
   align-items: center;
-  margin-top: 0.5rem;
-  margin-left: 10%;
-  margin-right: 0.5rem;
+  font-family:
+    'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; /*sans-serif;*/
+  background-color: rgb(20, 20, 20);
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
+  overflow: auto;
+  position: relative;
+}
+/* .ProjectsApplication::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  pointer-events: none;
+} */
+.tools-container {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  width: 100%;
+  height: 3.5rem;
+  margin: 0;
+  padding: 2rem 0.75rem;
+  padding-left: 12%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: start;
+  background-color: rgb(20, 20, 20);
+  background-clip: padding-box;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.tools {
+  width: 100%;
+  height: 3.5rem;
+  margin: 0;
+  padding-right: 0.54rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: end;
+  background-clip: padding-box;
+}
+.toolButton {
+  cursor: pointer;
+}
+.tools .iconContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.tools .iconContainer i {
+  display: block;
+  line-height: 1;
+}
+.techContainer {
+  font-family: 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  font-size: 0.8rem;
+  color: rgb(156, 165, 165);
+  background: rgb(44, 44, 44);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  display: block;
+  flex: row;
+}
+.logoPrinc {
+  width: 35%;
 }
 .whiteSpace-text {
   white-space: pre-line;
+  color: rgb(156, 165, 165);
 }
-.ProjectsApplication {
-  pointer-events: auto;
-  width: 100%;
-  height: 100%;
+.row {
   display: flex;
-  flex-direction: column;
-  justify-content: start;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: center;
   align-items: center;
-  font-family: sans-serif;
-  background-color: rgb(71, 70, 70);
-  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
-  overflow: auto;
+}
+.desplegable {
+  font-size: 0.9rem;
+  color: grey;
 }
 .containerPrinc {
   width: 100%;
   height: auto;
   margin: 0;
-  padding: 0;
-  background-color: rgb(51, 50, 50);
+  padding: 1rem;
+  background-color: rgb(20, 20, 20);
 }
 .principalImg {
   height: 12rem;
@@ -381,12 +536,12 @@ onBeforeUnmount(() => {
   height: 19%;
   margin: 0;
   padding: 0;
-  background: rgb(43, 42, 42);
+  background-color: rgb(20, 20, 20);
   position: relative;
 }
-.containerSec:hover {
+/* .containerSec:hover {
   border: 1px solid rgb(48, 47, 47);
-}
+} */
 .selectHover {
   cursor: pointer;
 }
@@ -394,7 +549,7 @@ onBeforeUnmount(() => {
   height: 100%;
   width: 13rem;
   object-fit: cover;
-  border-radius: 0.5rem;
+  /* border-radius: 0.5rem; */
 }
 .secondText {
   width: 100%;
@@ -405,9 +560,25 @@ onBeforeUnmount(() => {
     'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; /*'Trebuchet MS', sans-serif;*/
 }
 .text-anchor {
-  font-size: 0.8rem;
-  color: rgb(131, 130, 130);
+  font-size: 0.65rem;
+  color: rgb(156, 165, 165); /*rgb(131, 130, 130);*/
   text-decoration: none;
+}
+
+.tech-item {
+  display: flex; /* horizontal */
+  align-items: center; /* centra verticalmente */
+  gap: 0.5rem; /* espacio entre icono y texto */
+  margin-bottom: 0.5rem; /* espacio entre filas */
+}
+.iconoSkill {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  font-weight: bold;
 }
 .fs-7 {
   font-size: 0.8rem;
