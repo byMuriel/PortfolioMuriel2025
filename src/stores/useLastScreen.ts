@@ -8,6 +8,7 @@ export type ScreenName =
   | 'Experience'
   | 'Projects'
   | 'Contact'
+  | 'ContactEmail'
   | 'Blog'
 
 export const useLastScreen = defineStore('lastScreen', {

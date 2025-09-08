@@ -1,31 +1,49 @@
 <!-- src/components/Contact.vue -->
 <template>
   <div class="container-fluid contactApplication m-0 p-0">
-    <div class="m-0 p-0 mt-5 mb-3 text-start tittle">
-      <p class="text-dark ms-3">Contact me</p>
+    <!-- Tools -->
+    <div class="tools">
+      <img class="logoPrinc" src="@/assets/images/ContactLogos/contactApp.png" alt="" />
+      <div class="d-flex justify-content-center">
+        <span @click="go('Init')" class="d-flex justify-content-center align-items-center">
+          <i class="bi bi-house-door"></i>
+        </span>
+        <span @click="go('Init')" class="d-flex justify-content-center align-items-center ms-2">
+          <i class="bi bi-three-dots-vertical"></i>
+        </span>
+      </div>
     </div>
+    <!-- Content -->
     <div class="containerContact">
-      <div v-for="(contact, index) in ContactImage" :key="index" class="m-0 p-1 mb-3 contactCard">
+      <div
+        v-for="(contact, index) in ContactImage"
+        :key="index"
+        class="contactCard"
+        @click="go(contact.goTo)"
+      >
         <div
           class="container-fluid d-flex justify-content-between align-items-center"
           @click="getIn(index)"
         >
-          <img :src="contact.logo" alt="" class="circulo circulo_border" />
-          <div class="text-start texto_contacto">
-            <p class="text-dark m-0">{{ contact.name }}</p>
-            <div class="text-end">
-              <a
-                class="text-anchor"
-                target="_blank"
-                rel="noopener noreferrer"
-                :href="contact.link"
-                >{{ contact.link }}</a
-              >
-            </div>
+          <div class="containerImg">
+            <img :src="contact.logo" alt="" class="circulo" />
           </div>
-          <div class="icono_leido text-dark p-3">
-            <span class="tick single"></span>
-            <span v-if="clicked[index]" class="tick double"></span>
+
+          <div class="texto_contacto">
+            <div class="d-flex justify-content-between align-items-center">
+              <p class="m-0">
+                <strong>{{ contact.name }}</strong>
+              </p>
+              <p style="font-size: 0.7rem" class="m-2">Today</p>
+            </div>
+
+            <div class="d-flex justify-content-start">
+              <div>
+                <span class="textMessage">
+                  {{ contact.message }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -35,6 +53,7 @@
 
 <script setup lang="ts">
 import { inject, type Ref, ref, computed, type ComputedRef, watchEffect, onMounted } from 'vue'
+import { useRedirectStore } from '@/stores/useRedirect'
 
 const data = inject<Ref<ProvidedData>>('data')
 if (!data) throw new Error('No se inyectó "data".')
@@ -43,6 +62,7 @@ const screen: Ref<HTMLDivElement | null> = ref(null)
 type ContactJSON = {
   logo: string
   link: string
+  goTo: string
 } & Record<string, unknown>
 type ProvidedData = {
   contact: Record<string, ContactJSON>
@@ -50,7 +70,10 @@ type ProvidedData = {
 type ContactVM = ContactJSON & {
   logo: string
   link: string
+  goTo: string
 }
+const clicked = ref<boolean[]>([])
+const redirectStore = useRedirectStore()
 
 /*****************************************************************************************
  * CONSTANT: ContactContent
@@ -126,9 +149,21 @@ const ContactLink = computed<ContactVM[]>(() => {
     link: new URL(item.link, import.meta.url).href,
   }))
 })
-
-const clicked = ref<boolean[]>([])
-
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation from the About component to another screen.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
+ *****************************************************************************************/
+function go(to: string) {
+  console.log(to)
+  if (to !== '') {
+    redirectStore.redirect(to)
+  }
+}
 /*****************************************************************************************
  * WATCHER: clicked initialization
  * AUTHOR: Muriel Vitale.
@@ -145,7 +180,6 @@ const clicked = ref<boolean[]>([])
 watchEffect(() => {
   clicked.value = Array(contactKeys.value.length).fill(false)
 })
-
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
@@ -158,7 +192,6 @@ watchEffect(() => {
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
-
 /*****************************************************************************************
  * FUNCTION: getIn
  * AUTHOR: Muriel Vitale.
@@ -172,7 +205,6 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
 function getIn(index: number): void {
   clicked.value[index] = true
 }
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
@@ -190,6 +222,9 @@ defineExpose<{
 <style scoped lang="scss">
 @use '@/styles/colors' as *;
 
+.logoPrinc {
+  width: 40%;
+}
 .contactApplication {
   pointer-events: auto;
   width: 100%;
@@ -200,12 +235,39 @@ defineExpose<{
   flex-direction: column;
   justify-content: start;
   align-items: center;
-  font-family: sans-serif;
-  background-color: rgb(245, 243, 240);
-  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
+  background-color: rgb(255, 255, 255);
+}
+.contactApplication::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  pointer-events: none;
+}
+.tools {
+  flex: 0 0 auto;
+  height: 4rem;
+  background-color: rgb(255, 255, 255);
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-left: 15%;
+  padding-right: 1rem;
+  gap: 0.5rem;
 }
 .tittle {
   width: 100%;
+  height: fit-content;
+  font-weight: bolder;
+  font-family: sans-serif;
+}
+i {
+  font-size: 1.5rem;
+  color: #1a1919;
 }
 .containerContact {
   width: 100%;
@@ -217,8 +279,14 @@ defineExpose<{
   overflow: scroll;
 }
 .texto_contacto {
-  width: 65%;
+  width: 80%;
   padding-left: 0.5rem;
+  color: #1a1919;
+  font-family: 'Trebuchet MS', Calibri, Arial;
+}
+.textMessage {
+  font-weight: lighter;
+  font-family: Calibri, Arial;
 }
 .icono_leido {
   width: 10%;
@@ -226,18 +294,22 @@ defineExpose<{
 .tittle {
   font-size: 1.5rem;
 }
+.containerImg {
+  width: 3rem;
+  height: 3rem;
+}
 .circulo {
   border-radius: 50%;
   width: 3.5rem;
 }
-.circulo_border {
-  border: 0.25rem solid $WhatsAppGreen;
-}
+
 .contactCard {
   width: 97%;
-  background: rgba(255, 255, 255, 0.733);
+  background-color: rgba(255, 255, 255, 0.65);
   border-radius: 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  cursor: pointer;
+  margin-bottom: 2rem;
 }
 .titleSpecificContact {
   font-size: 1.3rem;
@@ -257,7 +329,7 @@ defineExpose<{
 .tick::after {
   content: '';
   position: absolute;
-  background: $WhatsAppBlue;
+  background-color: $WhatsAppBlue;
   border-radius: 0.1rem;
 }
 .tick::before {

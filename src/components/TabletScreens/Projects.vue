@@ -437,6 +437,7 @@ onBeforeUnmount(() => {
   font-family:
     'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; /*sans-serif;*/
   background-color: rgb(20, 20, 20);
+
   box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
   overflow: auto;
   position: relative;

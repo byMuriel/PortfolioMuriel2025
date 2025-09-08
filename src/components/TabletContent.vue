@@ -23,6 +23,7 @@ import Skills from './TabletScreens/Skills.vue'
 import Experience from './TabletScreens/Experience.vue'
 import Projects from './TabletScreens/Projects.vue'
 import Contact from './TabletScreens/Contact.vue'
+import ContactEmail from './TabletScreens/ContactEmail.vue'
 import Blog from './Blog.vue'
 
 const screen: Ref<HTMLDivElement | null> = ref(null)
@@ -35,6 +36,7 @@ const views: Record<ScreenName, Component> = {
   Experience,
   Projects,
   Contact,
+  ContactEmail,
   Blog,
 } as const satisfies Record<string, Component>
 
@@ -102,6 +104,7 @@ watch(
  *              - Actualiza `redirectStore.current`; el watcher re-renderiza `currentView`.
  *****************************************************************************************/
 const handleChangeScreen = (newView: keyof typeof views): void => {
+  console.log(newView + '3')
   lastScreen.changeLastScreen(newView)
   currentView.value = views[newView] || Init
   redirectStore.current = newView

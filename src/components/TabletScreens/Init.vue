@@ -35,9 +35,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
 
-type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog'
+type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
 
-type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog'
+type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
 const currentTime: Ref<string> = ref('')
 const currentDate: Ref<string> = ref('')
 const screen: Ref<HTMLDivElement | null> = ref(null)
@@ -76,6 +76,7 @@ const goTo = (route: RouteKey): void => {
   else if (route === 'about') emit('change-screen', 'About')
   else if (route === 'projects') emit('change-screen', 'Projects')
   else if (route === 'contact') emit('change-screen', 'Contact')
+  else if (route === 'contactEmail') emit('change-screen', 'ContactEmail')
   else if (route === 'blog') emit('change-screen', 'Blog')
 }
 

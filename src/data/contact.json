@@ -2,20 +2,24 @@
   "mail": {
     "logo": "/src/assets/images/ContactLogos/correo1.jpg",
     "name": "E-mail",
-    "message": "contact@murielvitale.com",
-    "link": "contact@murielvitale.com"
-  },
-  "gitHub": {
-    "logo": "/src/assets/images/ContactLogos/github.jpg",
-    "name": "GitHub:",
-    "message": "/byMuriel",
-    "link": "https://github.com/byMuriel"
+    "link": "contact@murielvitale.com",
+    "goTo": "ContactEmail",
+    "message": "Send me an Email 👉📩",
+    "bubble1": "Hello, please write your message below. Kindly remember to include your contact email so that I may respond to you as soon as possible.",
+    "bubble3": "Thank you for sending your message. If you wish to send another email from your outbox, you may do so using this addres:"
   },
   "linkedIn": {
     "logo": "/src/assets/images/ContactLogos/linkedin.png",
     "name": "LinkedIn:",
-
-    "message": "/murielvitale",
-    "link": "https://www.linkedin.com/in/murielvitale/"
+    "message": "Visit my LinkedIn 🙋‍♀️ profile",
+    "link": "https://www.linkedin.com/in/murielvitale/",
+    "goTo": ""
+  },
+  "gitHub": {
+    "logo": "/src/assets/images/ContactLogos/github.jpg",
+    "name": "GitHub:",
+    "message": "See my projects on GitHub 💻📱 ",
+    "link": "https://github.com/byMuriel",
+    "goTo": ""
   }
 }

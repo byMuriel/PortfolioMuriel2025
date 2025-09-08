@@ -19,7 +19,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "bootstrap": "^5.3.7",
+    "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "html2canvas": "^1.4.1",
     "pinia": "^3.0.3",
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@sinonjs/fake-timers": "^14.0.0",
     "@tsconfig/node22": "^22.0.2",
+    "@types/bootstrap": "^5.2.10",
     "@types/node": "^22.15.32",
     "@types/sizzle": "^2.3.9",
     "@types/three": "^0.179.0",
