@@ -24,11 +24,30 @@
       <!-- Write a Message -->
       <div class="Textarea">
         <textarea
+          ref="draftInput"
           class="containerDrafting"
-          placeholder="Escribe aquí..."
+          placeholder=""
           v-model="draft"
+          :disabled="sending"
+          maxlength="1500"
+          autofocus
         ></textarea>
-        <span class="sendButton" @click="onSend"><i class="bi bi-send"></i></span>
+
+        <span
+          class="sendButton"
+          :class="{ disabled: sending || !canSend }"
+          @click="canSend && onSend()"
+          :aria-disabled="sending || !canSend"
+          title="Escribe un poco más para enviar"
+        >
+          <i v-if="!sending" class="bi bi-send"></i>
+          <div
+            v-else
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-label="Enviando"
+          ></div>
+        </span>
       </div>
     </div>
 
@@ -73,12 +92,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRedirectStore } from '@/stores/useRedirect'
 import ContactData from '@/data/contact.json'
 import { Popover } from 'bootstrap'
 
+const MIN_LEN = 25 // Longitud minima del mensaje permitida
+const MAX_LEN = 1500 // Longitud maxima del mensaje permitida
+const canSend = computed(() => {
+  const len = draft.value.trim().length
+  return len >= MIN_LEN && len <= MAX_LEN && !sending.value
+})
+
 const chatContainer = ref<HTMLDivElement | null>(null)
+const draftInput = ref<HTMLTextAreaElement | null>(null)
 const messageSend1 = ref(false)
 const messageSend2 = ref(false)
 const sending = ref(false)
@@ -87,8 +114,9 @@ const introTime = ref(formatTime())
 const sendTime = ref('')
 const thanksTime = ref('')
 const bubble2 = ref('Este es el mensaje enviado')
-
 const redirectStore = useRedirectStore()
+const API_URL = import.meta.env.VITE_MAIL_ENDPOINT
+
 function go(to: string) {
   redirectStore.redirect(to)
 }
@@ -124,25 +152,48 @@ function initPopovers() {
     new Popover(el, { trigger: 'click', container: 'body' })
   })
 }
-async function onSend() {
+async function onSend(): Promise<boolean> {
+  if (sending.value) return false
   const text = draft.value.trim()
-  if (!text) return
+  if (text.length < MIN_LEN || text.length > MAX_LEN) return false
 
   sending.value = true
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+      }),
+    })
 
-  // 1) Actualiza la UI inmediatamente
-  bubble2.value = text
-  messageSend1.value = true
-  sendTime.value = formatTime()
+    const data: { ok?: boolean; error?: string } = (await res.json().catch(() => ({}))) as {
+      ok?: boolean
+      error?: string
+    }
 
-  // 2) (en el siguiente paso) haremos la llamada real al backend.
-  // Por ahora simulamos éxito para mostrar el "gracias":
-  messageSend2.value = true
-  thanksTime.value = formatTime()
+    if (!res.ok || !data.ok) {
+      throw new Error(data?.error || `HTTP ${res.status}`)
+    }
 
-  // 3) Limpia el textarea
-  draft.value = ''
-  sending.value = false
+    // UI de chat
+    bubble2.value = text
+    messageSend1.value = true
+    sendTime.value = formatTime()
+    messageSend2.value = true
+    thanksTime.value = formatTime()
+    draft.value = ''
+
+    await nextTick()
+    scrollToBottom()
+    return true
+  } catch (err) {
+    console.error(err)
+    alert('No pude enviar el mensaje. Intenta de nuevo.\n' + (err as Error).message)
+    return false
+  } finally {
+    sending.value = false
+  }
 }
 function scrollToBottom() {
   if (chatContainer.value) {
@@ -162,23 +213,10 @@ watch(messageSend2, async (v) => {
     initPopovers()
   }
 })
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
+  draftInput.value?.focus()
   initPopovers()
-  const observer = new MutationObserver(() => {
-    scrollToBottom()
-  })
-  if (chatContainer.value) {
-    observer.observe(chatContainer.value, {
-      childList: true,
-      subtree: true,
-    })
-  }
-})
-watch(messageSend2, async (v) => {
-  if (v) {
-    await nextTick()
-    initPopovers()
-  }
 })
 </script>
 
@@ -273,6 +311,11 @@ textarea.containerDrafting:focus {
   justify-content: center;
   align-items: center;
 }
+.sendButton.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .bi-send {
   color: #ffffff;
 }
@@ -338,6 +381,7 @@ textarea.containerDrafting:focus {
   font-size: 0.9rem;
   align-self: flex-start;
   margin: 0;
+  white-space: pre-line;
 }
 .messageTime {
   font-size: 0.7rem;

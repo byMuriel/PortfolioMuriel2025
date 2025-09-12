@@ -1,11 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  // readonly BASE_URL: string
-  // Agrega aquí otras variables que uses, por ejemplo:
-  // readonly VITE_API_URL: string
+  readonly VITE_MAIL_ENDPOINT: string
 }
-
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }

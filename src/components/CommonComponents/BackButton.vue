@@ -6,8 +6,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits } from 'vue'
-
 /*****************************************************************************************
  * EMITTER: defineEmits (change-screen)
  * AUTHOR: Muriel Vitale.

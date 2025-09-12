@@ -1,6 +1,6 @@
 <!-- src/components/Projects.vue -->
 <template>
-  <div class="container-fluid ProjectsApplication m-0 p-0">
+  <div class="container-fluid ProjectsApplication m-0 p-0" ref="currentProjectContainer">
     <div class="tools-container">
       <img class="logoPrinc" src="@/assets/images/Projects/Logos/youMuriel.png" alt="" />
       <div class="tools">
@@ -95,13 +95,13 @@
           :src="firstImageOf(rawProjects)"
           alt="Project image"
           class="secondImg selectHover m-0 p-0"
-          @click="replacePrincipal(rawProjects.originalIndex)"
+          @click="replacePrincipal(rawProjects.originalIndex, true)"
         />
         <!-- TextProject -->
         <div class="secondText p-2">
           <h6
             class="m-0 p-0 fw-bold selectHover"
-            @click="replacePrincipal(rawProjects.originalIndex)"
+            @click="replacePrincipal(rawProjects.originalIndex, true)"
           >
             {{ rawProjects.name }}
           </h6>
@@ -134,6 +134,7 @@
 
 <script setup lang="ts">
 import { inject, ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+import { nextTick } from 'vue'
 import PillText from '@/components/CommonComponents/PillText.vue'
 import colorSkill from '@/data/colorSkill.json'
 import { useRedirectStore } from '@/stores/useRedirect'
@@ -143,6 +144,7 @@ if (!data) throw new Error('No se proporcionó "data" via provide().')
 const rawProjects = computed<Record<string, Project>>(() => data.value.projects ?? {})
 const redirectStore = useRedirectStore()
 type ImageField = string[] | Record<string, string> | undefined
+const currentProjectContainer = ref<HTMLDivElement | null>(null)
 
 interface Project {
   image?: ImageField
@@ -182,6 +184,15 @@ function getColorText(name: string): string {
     return 'white'
   }
 }
+function scrollToTop(smooth: boolean = true) {
+  const el = currentProjectContainer.value
+  if (!el) return
+  if (typeof el.scrollTo === 'function') {
+    el.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
+  } else {
+    el.scrollTop = 0
+  }
+}
 /*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.
@@ -194,7 +205,6 @@ function getColorText(name: string): string {
 function go(to: string) {
   redirectStore.redirect(to)
 }
-
 /*****************************************************************************************
  * CONSTANT: AUTO_SLIDE_MS
  * AUTHOR: Muriel Vitale.
@@ -323,10 +333,12 @@ function firstImageOf(p: Project): string | undefined {
  * ***************************************************************************************
  * DESCRIPCIÓN: Cambia el proyecto principal mostrado y reinicia el índice de imagen.
  *****************************************************************************************/
-function replacePrincipal(index: number): void {
+async function replacePrincipal(index: number, fromClick: boolean = true): Promise<void> {
   if (index < 0 || index >= projects.value.length) return
   currentImageIndex.value = 0
   currentProjectIndex.value = index
+  await nextTick()
+  if (fromClick) scrollToTop(true)
 }
 
 /*****************************************************************************************
@@ -407,10 +419,6 @@ defineExpose({ screen, domReady })
  *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
-  // console.log('rawProjects', rawProjects.value)
-  // console.log('projects', projects.value)
-  // console.log('currentProject', currentProject.value)
-  // console.log('currentImage', currentImage.value)
 })
 
 /*****************************************************************************************
@@ -420,6 +428,7 @@ onMounted(() => {
  * ***************************************************************************************
  * DESCRIPCIÓN: Detiene y limpia el temporizador de auto-desplazamiento antes de destruir.
  *****************************************************************************************/
+
 onBeforeUnmount(() => {
   stopAutoSlide()
 })
@@ -439,7 +448,7 @@ onBeforeUnmount(() => {
   background-color: rgb(20, 20, 20);
 
   box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
-  overflow: auto;
+  overflow-y: auto;
   position: relative;
 }
 /* .ProjectsApplication::before {
