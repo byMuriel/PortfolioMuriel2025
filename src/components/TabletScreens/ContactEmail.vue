@@ -4,12 +4,6 @@
     <!-- Tools -->
     <div class="tools">
       <img class="logoPrinc" src="@/assets/images/ContactLogos/contactApp.png" alt="" />
-      <!-- <span
-        @click="go('Init')"
-        class="toolButton iconContainer d-flex justify-content-center align-items-center"
-      >
-        <i class="bi bi-three-dots-vertical"></i>
-      </span> -->
       <div class="dropdown">
         <span
           type="button"
@@ -114,29 +108,90 @@ import { useRedirectStore } from '@/stores/useRedirect'
 import ContactData from '@/data/contact.json'
 import { Popover } from 'bootstrap'
 
-const MIN_LEN = 25 // Longitud minima del mensaje permitida
-const MAX_LEN = 1500 // Longitud maxima del mensaje permitida
-const canSend = computed(() => {
-  const len = draft.value.trim().length
-  return len >= MIN_LEN && len <= MAX_LEN && !sending.value
-})
+const MIN_LEN: number = 25 // Longitud minima del mensaje permitida
+const MAX_LEN: number = 1500 // Longitud maxima del mensaje permitida
+const API_URL = import.meta.env.VITE_MAIL_ENDPOINT as string
 
 const chatContainer = ref<HTMLDivElement | null>(null)
 const draftInput = ref<HTMLTextAreaElement | null>(null)
-const messageSend1 = ref(false)
-const messageSend2 = ref(false)
-const sending = ref(false)
-const draft = ref('')
-const introTime = ref(formatTime())
-const sendTime = ref('')
-const thanksTime = ref('')
-const bubble2 = ref('Este es el mensaje enviado')
-const redirectStore = useRedirectStore()
-const API_URL = import.meta.env.VITE_MAIL_ENDPOINT
 
+// StateFlags
+const messageSend1 = ref<boolean>(false)
+const messageSend2 = ref<boolean>(false)
+const sending = ref<boolean>(false)
+const draft = ref<string>('')
+const introTime = ref<string>(formatTime())
+const sendTime = ref<string>('')
+const thanksTime = ref<string>('')
+const bubble2 = ref<string>('Este es el mensaje enviado')
+
+// Store Instances
+const redirectStore = useRedirectStore()
+
+/*****************************************************************************************
+ * COMPUTED: canSend
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Validates if the draft message meets length requirements and is not sending.
+ * ***************************************************************************************
+ * COMPUTADO: canSend
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Valida si el borrador cumple con los requisitos de longitud y no se está enviando.
+ *****************************************************************************************/
+const canSend = computed<boolean>(() => {
+  const len = draft.value.trim().length
+  return len >= MIN_LEN && len <= MAX_LEN && !sending.value
+})
+/*****************************************************************************************
+ * WATCHER: messageSend1
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls chat to the bottom after the first message is sent.
+ * ***************************************************************************************
+ * OBSERVADOR: messageSend1
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Hace scroll al final del chat luego de enviar el primer mensaje.
+ *****************************************************************************************/
+watch(messageSend1, async (v) => {
+  if (v) {
+    await nextTick()
+    scrollToBottom()
+  }
+})
+/*****************************************************************************************
+ * WATCHER: messageSend2
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls chat to the bottom and initializes popovers after second message.
+ * ***************************************************************************************
+ * OBSERVADOR: messageSend2
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Hace scroll al final del chat e inicializa los popovers después del segundo mensaje.
+ *****************************************************************************************/
+watch(messageSend2, async (v) => {
+  if (v) {
+    await nextTick()
+    scrollToBottom()
+    initPopovers()
+  }
+}) /*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Redirects to a specific screen inside the tablet content.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Redirige a una pantalla específica dentro del contenido de la tablet.
+ *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
+/*****************************************************************************************
+ * FUNCTION: formatTime
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Formats a Date object into a 12-hour clock string with am/pm.
+ * ***************************************************************************************
+ * FUNCIÓN: formatTime
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Formatea un objeto Date en un string de reloj 12 horas con a.m./p.m.
+ *****************************************************************************************/
 function formatTime(date: Date = new Date()): string {
   let hours = date.getHours()
   const minutes = date.getMinutes()
@@ -144,10 +199,28 @@ function formatTime(date: Date = new Date()): string {
   hours = hours % 12 || 12
   return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`
 }
+/*****************************************************************************************
+ * FUNCTION: copyToClipboard
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Copies given text to the system clipboard.
+ * ***************************************************************************************
+ * FUNCIÓN: copyToClipboard
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Copia el texto dado al portapapeles del sistema.
+ *****************************************************************************************/
 function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(console.error)
 }
-function handleCopy(text: string, event: Event) {
+/*****************************************************************************************
+ * FUNCTION: handleCopy
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Copies text to clipboard and shows a temporary popover confirmation.
+ * ***************************************************************************************
+ * FUNCIÓN: handleCopy
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Copia texto al portapapeles y muestra un popover temporal de confirmación.
+ *****************************************************************************************/
+function handleCopy(text: string, event: MouseEvent) {
   copyToClipboard(text)
 
   const target = event.currentTarget as HTMLElement
@@ -163,12 +236,30 @@ function handleCopy(text: string, event: Event) {
   pop.show()
   setTimeout(() => pop.hide(), 3000)
 }
+/*****************************************************************************************
+ * FUNCTION: initPopovers
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes Bootstrap popovers for elements marked with data-bs-toggle.
+ * ***************************************************************************************
+ * FUNCIÓN: initPopovers
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Inicializa los popovers de Bootstrap en los elementos con data-bs-toggle.
+ *****************************************************************************************/
 function initPopovers() {
   document.querySelectorAll<HTMLElement>('[data-bs-toggle="popover"]').forEach((el) => {
     Popover.getInstance(el)?.dispose()
     new Popover(el, { trigger: 'click', container: 'body' })
   })
 }
+/*****************************************************************************************
+ * FUNCTION: onSend
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Sends the chat message to the backend API and updates UI states.
+ * ***************************************************************************************
+ * FUNCIÓN: onSend
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Envía el mensaje del chat al API backend y actualiza los estados de la UI.
+ *****************************************************************************************/
 async function onSend(): Promise<boolean> {
   if (sending.value) return false
   const text = draft.value.trim()
@@ -212,24 +303,29 @@ async function onSend(): Promise<boolean> {
     sending.value = false
   }
 }
+/*****************************************************************************************
+ * FUNCTION: scrollToBottom
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls the chat container to its bottom position.
+ * ***************************************************************************************
+ * FUNCIÓN: scrollToBottom
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Hace scroll del contenedor del chat hasta la parte inferior.
+ *****************************************************************************************/
 function scrollToBottom() {
   if (chatContainer.value) {
     chatContainer.value.scrollTop = chatContainer.value.scrollHeight
   }
 }
-watch(messageSend1, async (v) => {
-  if (v) {
-    await nextTick()
-    scrollToBottom()
-  }
-})
-watch(messageSend2, async (v) => {
-  if (v) {
-    await nextTick()
-    scrollToBottom()
-    initPopovers()
-  }
-})
+/*****************************************************************************************
+ * LIFECYCLE: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Focuses the draft input and initializes popovers on component mount.
+ * ***************************************************************************************
+ * CICLO DE VIDA: onMounted
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Enfoca el input de borrador e inicializa los popovers al montar el componente.
+ *****************************************************************************************/
 onMounted(async () => {
   await nextTick()
   draftInput.value?.focus()
