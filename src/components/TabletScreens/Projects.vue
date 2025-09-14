@@ -5,6 +5,12 @@
       <img class="logoPrinc" src="@/assets/images/Projects/Logos/youMuriel.png" alt="" />
       <div class="tools">
         <span
+          @click="go('Init')"
+          class="toolButton iconContainer d-flex justify-content-center align-items-center"
+        >
+          <i class="bi bi-house-door-fill" style="font-size: 1.5rem; color: grey"></i>
+        </span>
+        <span
           class="toolButton iconContainer d-flex justify-content-center align-items-center"
           @click="go('About')"
           ><i class="bi bi-person" style="font-size: 1.5rem; color: grey"></i
@@ -14,9 +20,9 @@
           @click="go('Contact')"
           ><i class="bi bi-messenger" style="font-size: 1.5rem; color: grey"></i
         ></span>
-        <span class="toolButton iconContainer d-flex justify-content-center align-items-center"
+        <!-- <span class="toolButton iconContainer d-flex justify-content-center align-items-center"
           ><i class="bi bi-music-note-beamed" style="font-size: 1.5rem; color: grey"></i
-        ></span>
+        ></span> -->
       </div>
     </div>
     <!-- CurrentProject -->
@@ -31,31 +37,45 @@
     <div class="containerPrinc mb-3">
       <div class="m-0 text-color">
         <!-- Description CurrentProject -->
-        <h5 class="m-0 p-0 mb-1 fw-bold">{{ currentProject.name }}</h5>
-        <p class="whiteSpace-text fs-7 m-0 p-0">{{ currentProject.description }}</p>
-        <a
-          class="text-anchor m-0 p-0"
-          target="_blank"
-          rel="noopener noreferrer"
-          :href="currentProject.link"
-          ><span class="fw-bold text-light">Visit</span> {{ currentProject.link }}</a
-        >
-        <br />
-        <a
-          class="text-anchor m-0 p-0 fw-bold"
-          target="_blank"
-          rel="noopener noreferrer"
-          :href="currentProject.githubRep"
-          ><span class="fw-bold text-light">GitHub</span> Repository</a
-        >
-        <!-- Pill Action Buttons -->
-        <div class="row mt-2 mb-2">
-          <PillText text=" 27&nbsp;&nbsp;|&nbsp;&nbsp;" type="likeDislike" />
-          <PillText @click="toogleTech" text="Tech Used" type="seeTech" />
-          <PillText text="Skills" type="skills" />
+        <div class="m-o p-0">
+          <h5 class="m-0 p-0 mb-1 fw-bold">{{ currentProject.name }}</h5>
+          <p class="whiteSpace-text fs-7 m-0 p-0">{{ currentProject.description }}</p>
+          <a
+            class="text-anchor m-0 p-0"
+            target="_blank"
+            rel="noopener noreferrer"
+            :href="
+              currentProject.link?.startsWith('http')
+                ? currentProject.link
+                : 'https://' + (currentProject.link ?? '')
+            "
+            ><span class="fw-bold text-light">Visit</span> {{ currentProject.link }}</a
+          >
+          <br />
+          <a
+            class="text-anchor m-0 p-0 fw-bold"
+            target="_blank"
+            rel="noopener noreferrer"
+            :href="currentProject.githubRep"
+            ><span class="fw-bold text-light">GitHub</span> Repository</a
+          >
         </div>
+
+        <!-- Pill Action Buttons -->
+        <div class="mt-2 mb-2 d-flex gap-1">
+          <span>
+            <PillText
+              :text="likes + 'K &nbsp;&nbsp;|&nbsp;&nbsp;'"
+              :indexProject="currentProjectIndex"
+              type="likeDislike"
+              @thumbsChange="handleThumbs"
+          /></span>
+          <span @click="toogleTech()"><PillText text="Tech Used" type="seeTech" /></span>
+          <span> <PillText text="Skills" type="skills" /></span>
+        </div>
+
         <!-- Tech Used Info -->
-        <div class="techContainer">
+        <div class="techContainer" ref="techContainer">
           <p class="text-light m-0">
             Tech Used &nbsp <span :style="{ color: 'grey' }">({{ techList.length }})</span> &nbsp<i
               v-if="!showTechInfo"
@@ -111,9 +131,14 @@
                 class="text-anchor m-0 p-0"
                 target="_blank"
                 rel="noopener noreferrer"
-                :href="rawProjects.link"
-                ><span class="fw-bold text-light">Visit </span> {{ rawProjects.link }}</a
+                :href="
+                  rawProjects.link?.startsWith('http')
+                    ? rawProjects.link
+                    : 'https://' + (rawProjects.link ?? '')
+                "
               >
+                <span class="fw-bold text-light">Visit </span> {{ rawProjects.link }}
+              </a>
             </p>
 
             <p class="m-0 p-0">
@@ -138,6 +163,7 @@ import { nextTick } from 'vue'
 import PillText from '@/components/CommonComponents/PillText.vue'
 import colorSkill from '@/data/colorSkill.json'
 import { useRedirectStore } from '@/stores/useRedirect'
+import { useStateLikeDislikeProjects } from '@/stores/useStateLikeDislikeProjects'
 const data = inject<Ref<{ projects: Record<string, Project> }>>('data')
 if (!data) throw new Error('No se proporcionó "data" via provide().')
 
@@ -145,6 +171,8 @@ const rawProjects = computed<Record<string, Project>>(() => data.value.projects 
 const redirectStore = useRedirectStore()
 type ImageField = string[] | Record<string, string> | undefined
 const currentProjectContainer = ref<HTMLDivElement | null>(null)
+const techContainer = ref<HTMLDivElement | null>(null)
+const stateLikeDislikeStore = useStateLikeDislikeProjects()
 
 interface Project {
   image?: ImageField
@@ -154,6 +182,8 @@ interface Project {
   link?: string
   githubRep?: string
   tech?: Record<string, string> | string[] | undefined
+  likes?: number
+  unlikes?: number
   [key: string]: unknown
 }
 const defaultProject: Project = {
@@ -163,16 +193,23 @@ const defaultProject: Project = {
   githubRep: '#',
   image: [],
   logo: null,
+  likes: 0,
+  unlikes: 0,
 }
-
 const showTechInfo: Ref<boolean> = ref(false)
+const like: Ref<boolean> = ref(false)
+const likesObject: Ref<Record<string, number>> = ref({})
 const techList = computed(() => {
   const tech = currentProject.value?.tech
   if (!tech) return []
   return Object.entries(tech)
 })
 function toogleTech() {
-  console.log('hiciste click')
+  showTechInfo.value = !showTechInfo.value
+  if (showTechInfo.value === true && techContainer.value != null) {
+    techContainer.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    techContainer.value.focus()
+  }
 }
 function getColor(name: string): string {
   return (colorSkill as Record<string, string>)[name] || 'grey'
@@ -213,7 +250,6 @@ function go(to: string) {
  * DESCRIPCIÓN: Intervalo (ms) para el auto-desplazamiento de imágenes del proyecto.
  *****************************************************************************************/
 const AUTO_SLIDE_MS: number = 4000
-
 /*****************************************************************************************
  * VARIABLE: intervalId
  * AUTHOR: Muriel Vitale.
@@ -222,7 +258,6 @@ const AUTO_SLIDE_MS: number = 4000
  * DESCRIPCIÓN: Guarda el id de setInterval del auto-slide; null cuando está detenido.
  *****************************************************************************************/
 let intervalId: ReturnType<typeof setInterval> | null = null
-
 /*****************************************************************************************
  * VARIABLE: projects
  * AUTHOR: Muriel Vitale.
@@ -234,7 +269,6 @@ const projects: ComputedRef<Project[]> = computed(() => {
   const raw = rawProjects.value ?? {}
   return Object.values(raw).filter((p): p is Project => !!p) // filtra undefined
 })
-
 /*****************************************************************************************
  * STATE: currentProjectIndex / currentImageIndex
  * AUTHOR: Muriel Vitale.
@@ -244,7 +278,7 @@ const projects: ComputedRef<Project[]> = computed(() => {
  *****************************************************************************************/
 const currentProjectIndex: Ref<number> = ref(0)
 const currentImageIndex: Ref<number> = ref(0)
-
+const likes = computed(() => projects.value[currentProjectIndex.value].likes)
 /*****************************************************************************************
  * COMPUTED: currentProject
  * AUTHOR: Muriel Vitale.
@@ -253,7 +287,6 @@ const currentImageIndex: Ref<number> = ref(0)
  * DESCRIPCIÓN: Retorna el proyecto activo (con un fallback seguro si la lista está vacía).
  *****************************************************************************************/
 const currentProject = computed(() => projects.value[currentProjectIndex.value] ?? defaultProject)
-
 /*****************************************************************************************
  * COMPUTED: images
  * AUTHOR: Muriel Vitale.
@@ -265,7 +298,6 @@ const images = computed(() => {
   const imgs = currentProject.value?.image
   return Array.isArray(imgs) ? imgs : imgs ? Object.values(imgs) : []
 })
-
 /*****************************************************************************************
  * COMPUTED: currentImage
  * AUTHOR: Muriel Vitale.
@@ -274,7 +306,6 @@ const images = computed(() => {
  * DESCRIPCIÓN: URL de la imagen actual del proyecto activo, según `currentImageIndex`.
  *****************************************************************************************/
 const currentImage = computed(() => images.value[currentImageIndex.value])
-
 /*****************************************************************************************
  * COMPUTED: otherProjects
  * AUTHOR: Muriel Vitale.
@@ -287,7 +318,6 @@ const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = comp
     .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
     .filter((_, i) => i !== currentProjectIndex.value),
 )
-
 /*****************************************************************************************
  * TYPES: ProjectBase / ProjectWithLogo
  * AUTHOR: Muriel Vitale.
@@ -297,7 +327,6 @@ const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = comp
  *****************************************************************************************/
 type ProjectBase = Omit<Project, 'logo'>
 type ProjectWithLogo = ProjectBase & { logo: string | null }
-
 /*****************************************************************************************
  * COMPUTED: projectLogos
  * AUTHOR: Muriel Vitale.
@@ -312,7 +341,6 @@ const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
     return { ...(rest as ProjectBase), logo: resolved }
   }),
 )
-
 /*****************************************************************************************
  * FUNCTION: firstImageOf
  * AUTHOR: Muriel Vitale.
@@ -325,7 +353,6 @@ function firstImageOf(p: Project): string | undefined {
   if (!img) return undefined
   return Array.isArray(img) ? img[0] : Object.values(img)[0]
 }
-
 /*****************************************************************************************
  * FUNCTION: replacePrincipal
  * AUTHOR: Muriel Vitale.
@@ -340,7 +367,6 @@ async function replacePrincipal(index: number, fromClick: boolean = true): Promi
   await nextTick()
   if (fromClick) scrollToTop(true)
 }
-
 /*****************************************************************************************
  * FUNCTION: nextImage
  * AUTHOR: Muriel Vitale.
@@ -353,7 +379,6 @@ function nextImage(): void {
   if (!total) return
   currentImageIndex.value = (currentImageIndex.value + 1) % total
 }
-
 /*****************************************************************************************
  * FUNCTION: startAutoSlide
  * AUTHOR: Muriel Vitale.
@@ -365,7 +390,6 @@ function startAutoSlide(): void {
   if (intervalId) return
   intervalId = setInterval(nextImage, AUTO_SLIDE_MS)
 }
-
 /*****************************************************************************************
  * FUNCTION: stopAutoSlide
  * AUTHOR: Muriel Vitale.
@@ -378,6 +402,13 @@ function stopAutoSlide(): void {
   clearInterval(intervalId)
   intervalId = null
 }
+function handleThumbs(value: number) {
+  // if (value === 0) console.log('Nada seleccionado')
+  // if (value === 1) console.log('👍 Like')
+  // if (value === 2) console.log('👎 Dislike')
+  const i = currentProjectIndex.value
+  stateLikeDislikeStore.setVote(i, value)
+}
 
 /*****************************************************************************************
  * VARIABLE: screen
@@ -387,7 +418,6 @@ function stopAutoSlide(): void {
  * DESCRIPCIÓN: Referencia reactiva al contenedor DOM de la pantalla de proyectos.
  *****************************************************************************************/
 const screen = ref<HTMLElement | null>(null)
-
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
@@ -400,7 +430,6 @@ const domReady: Promise<void> = new Promise((resolve) => {
     resolve()
   })
 })
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
@@ -409,7 +438,6 @@ const domReady: Promise<void> = new Promise((resolve) => {
  * DESCRIPCIÓN: Expone `screen` y `domReady` al componente padre.
  *****************************************************************************************/
 defineExpose({ screen, domReady })
-
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
@@ -419,8 +447,16 @@ defineExpose({ screen, domReady })
  *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
+  likesObject.value = Object.keys(rawProjects.value ?? {}).reduce<Record<string, number>>(
+    (acc, key) => {
+      acc[key] = 0
+      return acc
+    },
+    {},
+  )
+  // Inicializar store con ese objeto
+  stateLikeDislikeStore.initVotes(likesObject.value)
 })
-
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
  * AUTHOR: Muriel Vitale.
@@ -428,7 +464,6 @@ onMounted(() => {
  * ***************************************************************************************
  * DESCRIPCIÓN: Detiene y limpia el temporizador de auto-desplazamiento antes de destruir.
  *****************************************************************************************/
-
 onBeforeUnmount(() => {
   stopAutoSlide()
 })

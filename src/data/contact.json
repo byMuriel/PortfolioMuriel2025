@@ -10,14 +10,14 @@
   },
   "linkedIn": {
     "logo": "/src/assets/images/ContactLogos/linkedin.png",
-    "name": "LinkedIn:",
+    "name": "LinkedIn",
     "message": "Visit my LinkedIn 🙋‍♀️ profile",
     "link": "https://www.linkedin.com/in/murielvitale/",
     "goTo": ""
   },
   "gitHub": {
     "logo": "/src/assets/images/ContactLogos/github.jpg",
-    "name": "GitHub:",
+    "name": "GitHub",
     "message": "See my projects on GitHub 💻📱 ",
     "link": "https://github.com/byMuriel",
     "goTo": ""

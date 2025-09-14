@@ -4,13 +4,30 @@
     <!-- Tools -->
     <div class="tools">
       <img class="logoPrinc" src="@/assets/images/ContactLogos/contactApp.png" alt="" />
-
-      <span
+      <!-- <span
         @click="go('Init')"
         class="toolButton iconContainer d-flex justify-content-center align-items-center"
       >
         <i class="bi bi-three-dots-vertical"></i>
-      </span>
+      </span> -->
+      <div class="dropdown">
+        <span
+          type="button"
+          id="dropdownMenuButton1"
+          class="d-flex justify-content-center align-items-center ms-2"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <i class="bi bi-three-dots-vertical"></i>
+        </span>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+          <li @click="go('Init')"><a class="dropdown-item" href="#">Home</a></li>
+          <li @click="go('About')"><a class="dropdown-item" href="#">About</a></li>
+          <li @click="go('Projects')"><a class="dropdown-item" href="#">Projects</a></li>
+          <li @click="go('Experience')"><a class="dropdown-item" href="#">Experience</a></li>
+          <li @click="go('Skills')"><a class="dropdown-item" href="#">Skills</a></li>
+        </ul>
+      </div>
     </div>
 
     <div class="containerStateInitial" v-if="!messageSend1">

@@ -104,7 +104,7 @@ watch(
  *              - Actualiza `redirectStore.current`; el watcher re-renderiza `currentView`.
  *****************************************************************************************/
 const handleChangeScreen = (newView: keyof typeof views): void => {
-  console.log(newView + '3')
+  /*console.log(newView + '3')*/
   lastScreen.changeLastScreen(newView)
   currentView.value = views[newView] || Init
   redirectStore.current = newView

@@ -8,18 +8,33 @@
         <span @click="go('Init')" class="d-flex justify-content-center align-items-center">
           <i class="bi bi-house-door"></i>
         </span>
-        <span @click="go('Init')" class="d-flex justify-content-center align-items-center ms-2">
-          <i class="bi bi-three-dots-vertical"></i>
-        </span>
+        <div class="dropdown">
+          <span
+            type="button"
+            id="dropdownMenuButton1"
+            class="d-flex justify-content-center align-items-center ms-2"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="bi bi-three-dots-vertical"></i>
+          </span>
+          <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+            <li @click="go('About')"><a class="dropdown-item" href="#">About</a></li>
+            <li @click="go('Projects')"><a class="dropdown-item" href="#">Projects</a></li>
+            <li @click="go('Experience')"><a class="dropdown-item" href="#">Experience</a></li>
+            <li @click="go('Skills')"><a class="dropdown-item" href="#">Skills</a></li>
+          </ul>
+        </div>
       </div>
     </div>
+
     <!-- Content -->
     <div class="containerContact">
       <div
         v-for="(contact, index) in ContactImage"
         :key="index"
         class="contactCard"
-        @click="go(contact.goTo)"
+        @click="go(contact.goTo, contact)"
       >
         <div
           class="container-fluid d-flex justify-content-between align-items-center"
@@ -60,6 +75,7 @@ if (!data) throw new Error('No se inyectó "data".')
 const screen: Ref<HTMLDivElement | null> = ref(null)
 
 type ContactJSON = {
+  name: string
   logo: string
   link: string
   goTo: string
@@ -158,10 +174,11 @@ const ContactLink = computed<ContactVM[]>(() => {
  * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
  *****************************************************************************************/
-function go(to: string) {
-  console.log(to)
+function go(to: string, contact: ContactJSON) {
   if (to !== '') {
     redirectStore.redirect(to)
+  } else if (contact.name === 'LinkedIn' || contact.name === 'GitHub') {
+    window.open(contact.link, '_blank')
   }
 }
 /*****************************************************************************************
@@ -203,6 +220,7 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
  *              del contacto.
  *****************************************************************************************/
 function getIn(index: number): void {
+  console.log(index)
   clicked.value[index] = true
 }
 /*****************************************************************************************
