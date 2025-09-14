@@ -167,12 +167,15 @@ import { useStateLikeDislikeProjects } from '@/stores/useStateLikeDislikeProject
 const data = inject<Ref<{ projects: Record<string, Project> }>>('data')
 if (!data) throw new Error('No se proporcionó "data" via provide().')
 
-const rawProjects = computed<Record<string, Project>>(() => data.value.projects ?? {})
-const redirectStore = useRedirectStore()
 type ImageField = string[] | Record<string, string> | undefined
+
 const currentProjectContainer = ref<HTMLDivElement | null>(null)
 const techContainer = ref<HTMLDivElement | null>(null)
+const screen = ref<HTMLElement | null>(null) //Reactive DOM reference for the projects screen container.
+
+// Store Instances
 const stateLikeDislikeStore = useStateLikeDislikeProjects()
+const redirectStore = useRedirectStore()
 
 interface Project {
   image?: ImageField
@@ -187,6 +190,7 @@ interface Project {
   [key: string]: unknown
 }
 const defaultProject: Project = {
+  // Fallback Object
   name: '',
   description: '',
   link: '#',
@@ -196,14 +200,137 @@ const defaultProject: Project = {
   likes: 0,
   unlikes: 0,
 }
+let intervalId: ReturnType<typeof setInterval> | null = null
+type ProjectBase = Omit<Project, 'logo'>
+type ProjectWithLogo = ProjectBase & { logo: string | null }
+
+// StateFlags
 const showTechInfo: Ref<boolean> = ref(false)
 const like: Ref<boolean> = ref(false)
 const likesObject: Ref<Record<string, number>> = ref({})
+const currentProjectIndex: Ref<number> = ref(0)
+const currentImageIndex: Ref<number> = ref(0)
+const AUTO_SLIDE_MS: number = 4000 //Interval (ms) for the auto-slide of project images.
+
+/*****************************************************************************************
+ * COMPUTED: rawProjects
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Reactive map of projects as received from provide/inject (object by id).
+ * ***************************************************************************************
+ * COMPUTADO: rawProjects
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Mapa reactivo de proyectos recibido por provide/inject (objeto por id).
+ *****************************************************************************************/
+const rawProjects = computed<Record<string, Project>>(() => data.value.projects ?? {})
+/*****************************************************************************************
+ * COMPUTED: likes
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the like counter of the current active project.
+ * ***************************************************************************************
+ * COMPUTADO: likes
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Retorna el contador de likes del proyecto activo.
+ *****************************************************************************************/
+const likes = computed(() => projects.value[currentProjectIndex.value].likes)
+/*****************************************************************************************
+ * COMPUTED: currentProject
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Safely resolves the currently selected project or a default fallback.
+ * ***************************************************************************************
+ * COMPUTADO: currentProject
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Resuelve de forma segura el proyecto seleccionado o un fallback por defecto.
+ *****************************************************************************************/
+const currentProject = computed(() => projects.value[currentProjectIndex.value] ?? defaultProject)
+/*****************************************************************************************
+ * COMPUTED: images
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Normalizes the project's image field (array or object) into an array.
+ * ***************************************************************************************
+ * COMPUTADO: images
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Normaliza el campo de imágenes (array u objeto) a un arreglo.
+ *****************************************************************************************/
+const images = computed(() => {
+  const imgs = currentProject.value?.image
+  return Array.isArray(imgs) ? imgs : imgs ? Object.values(imgs) : []
+})
+/*****************************************************************************************
+ * COMPUTED: currentImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Current image URL based on the active image index.
+ * ***************************************************************************************
+ * COMPUTADO: currentImage
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: URL de la imagen actual según el índice activo.
+ *****************************************************************************************/
+const currentImage = computed(() => images.value[currentImageIndex.value])
+/*****************************************************************************************
+ * COMPUTED: otherProjects
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: All projects except the current one, preserving original index.
+ * ***************************************************************************************
+ * COMPUTADO: otherProjects
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Todos los proyectos excepto el actual, preservando el índice original.
+ *****************************************************************************************/
+const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = computed(() =>
+  projects.value
+    .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
+    .filter((_, i) => i !== currentProjectIndex.value),
+)
+/*****************************************************************************************
+ * COMPUTED: techList
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Key/value entries of the current project's tech dictionary.
+ * ***************************************************************************************
+ * COMPUTADO: techList
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Pares clave/valor del diccionario de tecnologías del proyecto actual.
+ *****************************************************************************************/
 const techList = computed(() => {
   const tech = currentProject.value?.tech
   if (!tech) return []
   return Object.entries(tech)
 })
+/*****************************************************************************************
+ * COMPUTED: projects
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Normalized list of projects (object → array), filtering undefined.
+ * ***************************************************************************************
+ * COMPUTADO: projects
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Lista normalizada de proyectos (objeto → arreglo), filtrando undefined.
+ *****************************************************************************************/
+const projects: ComputedRef<Project[]> = computed(() => {
+  const raw = rawProjects.value ?? {}
+  return Object.values(raw).filter((p): p is Project => !!p)
+})
+/*****************************************************************************************
+ * COMPUTED: projectLogos
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Maps projects resolving the logo path to an absolute asset URL (or null).
+ * ***************************************************************************************
+ * COMPUTADO: projectLogos
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Mapea proyectos resolviendo la ruta del logo a una URL absoluta (o null).
+ *****************************************************************************************/
+const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
+  projects.value.map((p) => {
+    const { logo: rawLogo, ...rest } = p
+    const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
+    return { ...(rest as ProjectBase), logo: resolved }
+  }),
+)
+/*****************************************************************************************
+ * FUNCTION: toogleTech
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Toggles the "Tech Used" section and scrolls/focuses it into view.
+ * ***************************************************************************************
+ * FUNCIÓN: toogleTech
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Alterna la sección "Tech Used" y hace scroll/enfoque al contenedor.
+ *****************************************************************************************/
 function toogleTech() {
   showTechInfo.value = !showTechInfo.value
   if (showTechInfo.value === true && techContainer.value != null) {
@@ -211,9 +338,27 @@ function toogleTech() {
     techContainer.value.focus()
   }
 }
+/*****************************************************************************************
+ * FUNCTION: getColor
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns a background color for a given tech name from the color dictionary.
+ * ***************************************************************************************
+ * FUNCIÓN: getColor
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Retorna un color de fondo para una tecnología dada desde el diccionario.
+ *****************************************************************************************/
 function getColor(name: string): string {
   return (colorSkill as Record<string, string>)[name] || 'grey'
 }
+/*****************************************************************************************
+ * FUNCTION: getColorText
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns a contrasting text color for a given tech pill.
+ * ***************************************************************************************
+ * FUNCIÓN: getColorText
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Retorna un color de texto contrastante para la píldora de la tecnología.
+ *****************************************************************************************/
 function getColorText(name: string): string {
   if (name === 'JavaScript') {
     return 'black'
@@ -221,6 +366,15 @@ function getColorText(name: string): string {
     return 'white'
   }
 }
+/*****************************************************************************************
+ * FUNCTION: scrollToTop
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls the current project container to top (smooth or instant).
+ * ***************************************************************************************
+ * FUNCIÓN: scrollToTop
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Hace scroll al inicio del contenedor del proyecto (suave o inmediato).
+ *****************************************************************************************/
 function scrollToTop(smooth: boolean = true) {
   const el = currentProjectContainer.value
   if (!el) return
@@ -233,120 +387,23 @@ function scrollToTop(smooth: boolean = true) {
 /*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles navigation from the About component to another screen.
+ * DESCRIPTION: Delegates navigation to the redirect store.
  * ***************************************************************************************
  * FUNCIÓN: go
  * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
+ * DESCRIPCIÓN: Delegar la navegación al store de redirección.
  *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
 /*****************************************************************************************
- * CONSTANT: AUTO_SLIDE_MS
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Interval (ms) for the auto-slide of project images.
- * ***************************************************************************************
- * DESCRIPCIÓN: Intervalo (ms) para el auto-desplazamiento de imágenes del proyecto.
- *****************************************************************************************/
-const AUTO_SLIDE_MS: number = 4000
-/*****************************************************************************************
- * VARIABLE: intervalId
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Holds the setInterval id for the auto-slide; null when stopped.
- * ***************************************************************************************
- * DESCRIPCIÓN: Guarda el id de setInterval del auto-slide; null cuando está detenido.
- *****************************************************************************************/
-let intervalId: ReturnType<typeof setInterval> | null = null
-/*****************************************************************************************
- * VARIABLE: projects
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Normalized list of projects loaded from JSON (object → array).
- * ***************************************************************************************
- * DESCRIPCIÓN: Lista normalizada de proyectos cargada desde el JSON (objeto → arreglo).
- *****************************************************************************************/
-const projects: ComputedRef<Project[]> = computed(() => {
-  const raw = rawProjects.value ?? {}
-  return Object.values(raw).filter((p): p is Project => !!p) // filtra undefined
-})
-/*****************************************************************************************
- * STATE: currentProjectIndex / currentImageIndex
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Reactive indices for the selected project and its current image.
- * ***************************************************************************************
- * DESCRIPCIÓN: Índices reactivos del proyecto seleccionado y su imagen actual.
- *****************************************************************************************/
-const currentProjectIndex: Ref<number> = ref(0)
-const currentImageIndex: Ref<number> = ref(0)
-const likes = computed(() => projects.value[currentProjectIndex.value].likes)
-/*****************************************************************************************
- * COMPUTED: currentProject
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Returns the active project (with a safe default if list is empty).
- * ***************************************************************************************
- * DESCRIPCIÓN: Retorna el proyecto activo (con un fallback seguro si la lista está vacía).
- *****************************************************************************************/
-const currentProject = computed(() => projects.value[currentProjectIndex.value] ?? defaultProject)
-/*****************************************************************************************
- * COMPUTED: images
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Normalizes the project's `image` field into a string array (array or dict).
- * ***************************************************************************************
- * DESCRIPCIÓN: Normaliza el campo `image` del proyecto a un arreglo de strings (array o objeto).
- *****************************************************************************************/
-const images = computed(() => {
-  const imgs = currentProject.value?.image
-  return Array.isArray(imgs) ? imgs : imgs ? Object.values(imgs) : []
-})
-/*****************************************************************************************
- * COMPUTED: currentImage
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Current image URL for the active project, based on `currentImageIndex`.
- * ***************************************************************************************
- * DESCRIPCIÓN: URL de la imagen actual del proyecto activo, según `currentImageIndex`.
- *****************************************************************************************/
-const currentImage = computed(() => images.value[currentImageIndex.value])
-/*****************************************************************************************
- * COMPUTED: otherProjects
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: List of projects excluding the active one, preserving original index.
- * ***************************************************************************************
- * DESCRIPCIÓN: Lista de proyectos excluyendo el activo, preservando el índice original.
- *****************************************************************************************/
-const otherProjects: ComputedRef<(Project & { originalIndex: number })[]> = computed(() =>
-  projects.value
-    .map((project, originalIndex) => ({ ...(project as Project), originalIndex }))
-    .filter((_, i) => i !== currentProjectIndex.value),
-)
-/*****************************************************************************************
- * TYPES: ProjectBase / ProjectWithLogo
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Helper types to represent projects with a resolved `logo` URL (or null).
- * ***************************************************************************************
- * DESCRIPCIÓN: Tipos de ayuda para representar proyectos con `logo` resuelto (o null).
- *****************************************************************************************/
-type ProjectBase = Omit<Project, 'logo'>
-type ProjectWithLogo = ProjectBase & { logo: string | null }
-/*****************************************************************************************
- * COMPUTED: projectLogos
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Projects with `logo` converted to an absolute asset URL (or null if missing).
- * ***************************************************************************************
- * DESCRIPCIÓN: Proyectos con `logo` convertido a URL absoluta de asset (o null si no existe).
- *****************************************************************************************/
-const projectLogos: ComputedRef<ProjectWithLogo[]> = computed(() =>
-  projects.value.map((p) => {
-    const { logo: rawLogo, ...rest } = p
-    const resolved: string | null = rawLogo ? new URL(rawLogo, import.meta.url).href : null
-    return { ...(rest as ProjectBase), logo: resolved }
-  }),
-)
-/*****************************************************************************************
  * FUNCTION: firstImageOf
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Returns the first image URL of a project, handling array or object shapes.
+ * DESCRIPTION: Returns the first image URL regardless of whether image is array or object.
  * ***************************************************************************************
- * DESCRIPCIÓN: Devuelve la primera URL de imagen de un proyecto, sea array u objeto.
+ * FUNCIÓN: firstImageOf
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Retorna la primera URL de imagen sin importar si es array u objeto.
  *****************************************************************************************/
 function firstImageOf(p: Project): string | undefined {
   const img = p.image
@@ -356,9 +413,12 @@ function firstImageOf(p: Project): string | undefined {
 /*****************************************************************************************
  * FUNCTION: replacePrincipal
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Switches the main project being displayed and resets the image index.
+ * DESCRIPTION: Changes the active project, resets image index and optionally scrolls top.
  * ***************************************************************************************
- * DESCRIPCIÓN: Cambia el proyecto principal mostrado y reinicia el índice de imagen.
+ * FUNCIÓN: replacePrincipal
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Cambia el proyecto activo, reinicia el índice de imagen y opcionalmente
+ *              hace scroll al inicio.
  *****************************************************************************************/
 async function replacePrincipal(index: number, fromClick: boolean = true): Promise<void> {
   if (index < 0 || index >= projects.value.length) return
@@ -370,9 +430,11 @@ async function replacePrincipal(index: number, fromClick: boolean = true): Promi
 /*****************************************************************************************
  * FUNCTION: nextImage
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Advances the carousel to the next image, looping at the end.
+ * DESCRIPTION: Advances the image carousel with wrap-around logic.
  * ***************************************************************************************
- * DESCRIPCIÓN: Avanza el carrusel a la siguiente imagen con loop al final.
+ * FUNCIÓN: nextImage
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Avanza el carrusel de imágenes con lógica de vuelta al inicio.
  *****************************************************************************************/
 function nextImage(): void {
   const total = images.value.length
@@ -382,9 +444,11 @@ function nextImage(): void {
 /*****************************************************************************************
  * FUNCTION: startAutoSlide
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Starts the image auto-slide interval if not already running.
+ * DESCRIPTION: Starts the auto-slide interval if not already running.
  * ***************************************************************************************
- * DESCRIPCIÓN: Inicia el intervalo de auto-desplazamiento de imágenes si no está activo.
+ * FUNCIÓN: startAutoSlide
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Inicia el intervalo de auto-desplazamiento si no está activo.
  *****************************************************************************************/
 function startAutoSlide(): void {
   if (intervalId) return
@@ -393,31 +457,30 @@ function startAutoSlide(): void {
 /*****************************************************************************************
  * FUNCTION: stopAutoSlide
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Stops and clears the image auto-slide interval.
+ * DESCRIPTION: Stops and clears the auto-slide interval if active.
  * ***************************************************************************************
- * DESCRIPCIÓN: Detiene y limpia el intervalo de auto-desplazamiento de imágenes.
+ * FUNCIÓN: stopAutoSlide
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Detiene y limpia el intervalo de auto-desplazamiento si está activo.
  *****************************************************************************************/
 function stopAutoSlide(): void {
   if (!intervalId) return
   clearInterval(intervalId)
   intervalId = null
 }
+/*****************************************************************************************
+ * FUNCTION: handleThumbs
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Receives child emit with vote (0 none, 1 like, 2 dislike) and stores it.
+ * ***************************************************************************************
+ * FUNCIÓN: handleThumbs
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Recibe el emit del hijo con el voto (0 ninguno, 1 like, 2 dislike) y lo guarda.
+ *****************************************************************************************/
 function handleThumbs(value: number) {
-  // if (value === 0) console.log('Nada seleccionado')
-  // if (value === 1) console.log('👍 Like')
-  // if (value === 2) console.log('👎 Dislike')
   const i = currentProjectIndex.value
   stateLikeDislikeStore.setVote(i, value)
 }
-
-/*****************************************************************************************
- * VARIABLE: screen
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Reactive DOM reference for the projects screen container.
- * ***************************************************************************************
- * DESCRIPCIÓN: Referencia reactiva al contenedor DOM de la pantalla de proyectos.
- *****************************************************************************************/
-const screen = ref<HTMLElement | null>(null)
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
@@ -441,21 +504,22 @@ defineExpose({ screen, domReady })
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Starts the auto-slide timer when the component mounts.
+ * DESCRIPTION: Executes initialization logic when the component is mounted.
+ *              - Starts the auto-slide timer for the project images.
+ *              - Ensures the like/dislike store is initialized with the
+ *                project indices from rawProjects (only if not already initialized).
  * ***************************************************************************************
- * DESCRIPCIÓN: Inicia el temporizador de auto-desplazamiento al montar el componente.
+ * CICLO DE VIDA: onMounted
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Ejecuta la lógica de inicialización al montar el componente.
+ *              - Inicia el temporizador de auto-desplazamiento de las imágenes del proyecto.
+ *              - Asegura que el store de like/dislike se inicialice con los índices
+ *                de proyectos desde rawProjects (solo si aún no estaba inicializado).
  *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
-  likesObject.value = Object.keys(rawProjects.value ?? {}).reduce<Record<string, number>>(
-    (acc, key) => {
-      acc[key] = 0
-      return acc
-    },
-    {},
-  )
-  // Inicializar store con ese objeto
-  stateLikeDislikeStore.initVotes(likesObject.value)
+  const keys = Object.keys(rawProjects.value ?? {})
+  stateLikeDislikeStore.ensureInit(keys)
 })
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount

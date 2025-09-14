@@ -8,10 +8,17 @@ export const useStateLikeDislikeProjects = defineStore('likes', {
     //   if (number === 0) console.log('Nada seleccionado')
     //   if (number === 1) console.log('👍 Like')
     //   if (number === 2) console.log('👎 Dislike')
+    initialized: false,
   }),
   actions: {
-    initVotes(initial: Record<string, number>) {
-      this.projectVotes = { ...initial }
+    ensureInit(keys: Array<string | number>) {
+      if (this.initialized) return
+      const base: Record<string, number> = {}
+      keys.forEach((k) => {
+        base[String(k)] = 0
+      })
+      this.projectVotes = base
+      this.initialized = true
     },
     setVote(projectIndex: string | number, value: number) {
       this.projectVotes[String(projectIndex)] = value
