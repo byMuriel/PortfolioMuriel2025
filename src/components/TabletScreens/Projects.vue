@@ -1,6 +1,7 @@
 <!-- src/components/Projects.vue -->
 <template>
   <div class="container-fluid ProjectsApplication m-0 p-0" ref="currentProjectContainer">
+    <!-- Tools -->
     <div class="tools-container">
       <img class="logoPrinc" src="@/assets/images/Projects/Logos/youMuriel.png" alt="" />
       <div class="tools">
@@ -20,11 +21,9 @@
           @click="go('Contact')"
           ><i class="bi bi-messenger" style="font-size: 1.5rem; color: grey"></i
         ></span>
-        <!-- <span class="toolButton iconContainer d-flex justify-content-center align-items-center"
-          ><i class="bi bi-music-note-beamed" style="font-size: 1.5rem; color: grey"></i
-        ></span> -->
       </div>
     </div>
+
     <!-- CurrentProject -->
     <transition name="fade" mode="out-in">
       <img
@@ -60,7 +59,6 @@
             ><span class="fw-bold text-light">GitHub</span> Repository</a
           >
         </div>
-
         <!-- Pill Action Buttons -->
         <div class="mt-2 mb-2 d-flex gap-1">
           <span>
@@ -73,7 +71,6 @@
           <span @click="toogleTech()"><PillText text="Tech Used" type="seeTech" /></span>
           <span> <PillText text="Skills" type="skills" /></span>
         </div>
-
         <!-- Tech Used Info -->
         <div class="techContainer" ref="techContainer">
           <p class="text-light m-0">

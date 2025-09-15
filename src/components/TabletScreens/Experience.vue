@@ -2,19 +2,41 @@
 <template>
   <div class="container-fluid ExperienceApplication m-0 p-0">
     <div class="containerExperience">
-      <div v-for="(experience, index) in ExperienceLogo" :key="index" class="mt-5 mb-3 skillCard">
+      <!-- Tools Buttons -->
+      <div class="tools">
+        <img class="logoPrinc" src="@/assets/images/ExperienceLogos/LogoExperience.png" alt="" />
+        <div class="iconos">
+          <i @click="go('Init')" class="bi bi-house-door-fill"></i>
+          <i @click="go('Projects')" class="bi bi-folder-fill"></i>
+          <i @click="go('Contact')" class="bi bi-chat-quote-fill"></i>
+          <i @click="go('About')" class="bi bi-person-fill"></i>
+          <a class="m-0 p-0" href="*" target="_blank" rel="noopener noreferrer">
+            <PillButton class="toolButton" replaceClass="grayPill" text="LinkedIn"></PillButton>
+          </a>
+        </div>
+      </div>
+      <div v-for="(experience, index) in ExperienceLogo" :key="index" class="skillCard">
         <div class="container-fluid d-flex justify-content-between align-items-center">
-          <div class="me-2"><img :src="experience.logo" class="tamanioLogo" /></div>
+          <!-- Logo -->
+          <div class="m-0 p-0"><img :src="experience.logo" class="tamanioLogo" /></div>
+          <!-- Titlles -->
           <div class="text-end">
             <p class="text-light m-0 titleSpecificSkill">{{ experience.name }}</p>
             <p class="text-light m-0">{{ experience.position }}</p>
           </div>
         </div>
-        <p class="text-light">{{ experience.initDate }} - {{ experience.finalDate }}</p>
-        <p class="text-light whiteSpace-text">{{ experience.functions }}</p>
-        <a class="text-anchor" target="_blank" rel="noopener noreferrer" :href="experience.link">{{
-          experience.link
-        }}</a>
+        <!-- Info -->
+        <div class="m-0 p-0">
+          <p class="text-light">{{ experience.initDate }} - {{ experience.finalDate }}</p>
+          <p class="text-light whiteSpace-text">{{ experience.functions }}</p>
+          <a
+            class="text-anchor"
+            target="_blank"
+            rel="noopener noreferrer"
+            :href="experience.link"
+            >{{ experience.link }}</a
+          >
+        </div>
       </div>
     </div>
   </div>
@@ -22,8 +44,12 @@
 
 <script setup lang="ts">
 import { inject, ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
-const data= inject('data')
-const ExperienceContent = computed(() => data.value.experience)
+import PillButton from '@/components/CommonComponents/PillButton.vue'
+import { useRedirectStore } from '@/stores/useRedirect'
+
+interface PortfolioData {
+  experience: Record<string, ExperienceRaw>
+}
 interface ExperienceRaw {
   name: string
   position: string
@@ -34,7 +60,6 @@ interface ExperienceRaw {
   logo: string
   [key: string]: unknown
 }
-
 interface ExperienceResolved {
   name: string
   position: string
@@ -45,35 +70,56 @@ interface ExperienceResolved {
   logo: string
 }
 
-const rawList: ExperienceRaw[] = Object.values(ExperienceContent as Record<string, ExperienceRaw>)
 const screen: Ref<HTMLDivElement | null> = ref(null)
-
-/*****************************************************************************************
- * FUNCTION: resolveMaybeAsset
- * DESCRIPTION: If `path` is an http(s) URL, returns it as-is. Otherwise resolves it
- *              relative to the project assets using import.meta.url.
- * DESCRIPCIÓN: Si `path` es http(s), lo devuelve tal cual. Si no, lo resuelve como asset.
- *****************************************************************************************/
-function resolveMaybeAsset(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path
-  return new URL(path, import.meta.url).href
+const data = inject<Ref<PortfolioData>>('data')
+if (!data) {
+  throw new Error("No se encontró el provider de 'data'")
 }
+const redirectStore = useRedirectStore()
 
 /*****************************************************************************************
- * VARIABLE: ExperienceLogo
+ * CONSTANT: ExperienceContent
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed list of experiences with asset paths resolved.
- *              - Maps raw JSON items to a UI-friendly shape (ExperienceResolved).
- *              - Resolves `link` and `logo` via `resolveMaybeAsset` (http(s) or asset local).
+ * DESCRIPTION: Computed reference to the experience section from the injected app data.
+ *              - Reads `data.value.experience` and exposes it reactively.
  * ***************************************************************************************
- * DESCRIPCIÓN: Lista computada de experiencias con rutas de assets resueltas.
- *              - Mapea los items del JSON crudo a un formato para UI (ExperienceResolved).
- *              - Resuelve `link` y `logo` con `resolveMaybeAsset` (http(s) o asset local).
+ * CONSTANTE: ExperienceContent
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada a la sección `experience` de los datos inyectados.
+ *              - Lee `data.value.experience` y lo expone de forma reactiva.
  *****************************************************************************************/
-const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() => {
-  const raw = data?.value?.experience as Record<string, ExperienceRaw> | undefined
-  if (!raw) return []
-  return Object.values(raw).map((item) => ({
+const ExperienceContent = computed(() => data.value.experience)
+/*****************************************************************************************
+ * CONSTANT: rawList
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Normalized list of raw experience items.
+ *              - Converts the experience record into an array for iteration/mapping.
+ *              - Falls back to empty object to avoid runtime errors.
+ * ***************************************************************************************
+ * CONSTANTE: rawList
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Lista normalizada de items crudos de experiencia.
+ *              - Convierte el registro de experiencias en arreglo para iterar/mapear.
+ *              - Usa objeto vacío por defecto para evitar errores en runtime.
+ *****************************************************************************************/
+const rawList = computed<ExperienceRaw[]>(() =>
+  Object.values(ExperienceContent.value ?? ({} as Record<string, ExperienceRaw>)),
+)
+/*****************************************************************************************
+ * CONSTANT: ExperienceLogo
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: UI-ready experience list with resolved asset paths.
+ *              - Maps `rawList` into `ExperienceResolved`.
+ *              - Resolves `link`/`logo` via `resolveMaybeAsset` (http(s) or local asset).
+ * ***************************************************************************************
+ * CONSTANTE: ExperienceLogo
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Lista de experiencias lista para UI con rutas de assets resueltas.
+ *              - Mapea `rawList` a `ExperienceResolved`.
+ *              - Resuelve `link`/`logo` con `resolveMaybeAsset` (http(s) o asset local).
+ *****************************************************************************************/
+const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() =>
+  rawList.value.map((item) => ({
     name: item.name,
     position: item.position,
     initDate: item.initDate,
@@ -81,27 +127,69 @@ const ExperienceLogo: ComputedRef<ExperienceResolved[]> = computed(() => {
     functions: item.functions,
     link: resolveMaybeAsset(item.link),
     logo: resolveMaybeAsset(item.logo),
-  }))
-})
-
+  })),
+)
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Navigates to an internal route if `to` is provided; otherwise opens
+ *              the external link of the given contact (LinkedIn/GitHub) in a new tab.
+ * ***************************************************************************************
+ * FUNCIÓN: go
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Navega a una ruta interna si se pasa `to`; de lo contrario abre el
+ *              link externo del contacto (LinkedIn/GitHub) en una nueva pestaña.
+ *****************************************************************************************/
+function go(to: string) {
+  if (to !== '') {
+    redirectStore.redirect(to)
+    return
+  }
+}
+/*****************************************************************************************
+ * FUNCTION: resolveMaybeAsset
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns an absolute URL for an asset or leaves http(s) URLs untouched.
+ *              - If `path` starts with http(s), returns it as-is.
+ *              - Otherwise, resolves relative to the current module (Vite asset pipeline).
+ * ***************************************************************************************
+ * FUNCIÓN: resolveMaybeAsset
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Devuelve una URL absoluta de un asset o deja intactas URLs http(s).
+ *              - Si `path` inicia con http(s), lo retorna tal cual.
+ *              - Si no, lo resuelve relativo al módulo actual (pipeline de Vite).
+ *****************************************************************************************/
+function resolveMaybeAsset(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path
+  return new URL(path, import.meta.url).href
+}
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
- *              - Helpful to synchronize external logic (e.g., Three.js overlay alignment).
+ * DESCRIPTION: Promise that resolves when the component is mounted (DOM ready).
+ *              - Useful to coordinate external logic (e.g., Three.js overlay alignment).
  * ***************************************************************************************
+ * VARIABLE: domReady
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Promesa que se resuelve cuando el componente está montado (DOM listo).
- *              - Útil para sincronizar lógica externa (p. ej., alineación de overlays Three.js).
+ *              - Útil para coordinar lógica externa (p. ej., alinear overlays en Three.js).
  *****************************************************************************************/
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(() => resolve())
 })
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Exposes internal references to the parent.
- * ***************************************************************************************/
+ * DESCRIPTION: Exposes internal refs to the parent component.
+ *              - `screen`: root element ref.
+ *              - `domReady`: promise to await DOM readiness.
+ * ***************************************************************************************
+ * LLAMADA DE FUNCIÓN: defineExpose
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Expone refs internas al componente padre.
+ *              - `screen`: ref del elemento raíz.
+ *              - `domReady`: promesa para esperar el DOM listo.
+ *****************************************************************************************/
 defineExpose<{
   screen: Ref<HTMLDivElement | null>
   domReady: Promise<void>
@@ -116,21 +204,28 @@ defineExpose<{
   white-space: pre-line;
 }
 .ExperienceApplication {
-  pointer-events: auto;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  /* background-color: rgb(71, 70, 70); */
-  background-color: rgb(165, 163, 163);
-  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8);
-  overflow: auto;
+  background-color: rgb(238, 235, 235);
+  overflow: hidden;
 }
 .containerExperience {
-  padding: 1rem;
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  pointer-events: auto;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   justify-content: start;
@@ -142,15 +237,15 @@ defineExpose<{
   font-size: 1.5rem;
 }
 .skillCard {
-  width: 95%;
+  width: 98%;
+  height: fit-content;
   margin: 0;
-  padding: 0.75rem;
+  padding: 0.2rem;
   background: rgb(43, 42, 42);
-  border-radius: 0.75rem;
-  border: 1px solid transparent;
+  border-radius: 0.5rem;
   transition: border-color 0.2s ease;
-  padding-left: 2rem;
-  padding-right: 3rem;
+  padding: 1rem;
+  margin: 0;
 }
 .skillCard:hover {
   border-color: rgb(48, 47, 47);
@@ -160,7 +255,7 @@ defineExpose<{
   font-weight: bold;
 }
 .tamanioLogo {
-  width: 12rem;
+  width: 7rem;
   height: 100%;
   object-fit: contain;
 }
@@ -171,5 +266,35 @@ defineExpose<{
 }
 .tittle {
   font-size: 1.5rem;
+}
+.tools {
+  width: 80%;
+  height: 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-left: 1.5rem;
+}
+.iconos {
+  display: flex;
+  justify-content: right;
+  align-items: center;
+  line-height: 1;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.logoPrinc {
+  width: 6rem;
+}
+.bi {
+  font-size: 1.5rem;
+  color: grey;
+}
+.iconos i {
+  cursor: pointer;
+}
+.bi:hover {
+  cursor: pointer;
+  color: #535353;
 }
 </style>

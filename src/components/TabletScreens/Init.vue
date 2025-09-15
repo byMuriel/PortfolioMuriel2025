@@ -36,8 +36,9 @@
 import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
 
 type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
-
 type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
+
+// State Flags
 const currentTime: Ref<string> = ref('')
 const currentDate: Ref<string> = ref('')
 const screen: Ref<HTMLDivElement | null> = ref(null)
@@ -56,7 +57,6 @@ const screen: Ref<HTMLDivElement | null> = ref(null)
 const emit = defineEmits<{
   (e: 'change-screen', view: ViewKey): void
 }>()
-
 /*****************************************************************************************
  * FUNCTION: goTo
  * AUTHOR: Muriel Vitale.
@@ -79,7 +79,6 @@ const goTo = (route: RouteKey): void => {
   else if (route === 'contactEmail') emit('change-screen', 'ContactEmail')
   else if (route === 'blog') emit('change-screen', 'Blog')
 }
-
 /*****************************************************************************************
  * VARIABLE: domReady
  * AUTHOR: Muriel Vitale.
@@ -94,7 +93,6 @@ const goTo = (route: RouteKey): void => {
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
-
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.
@@ -111,7 +109,6 @@ defineExpose<{
   screen,
   domReady,
 })
-
 /*****************************************************************************************
  * FUNCTION: updateTime
  * AUTHOR: Muriel Vitale.
@@ -129,7 +126,6 @@ const updateTime = (): void => {
   const minutes = String(now.getMinutes()).padStart(2, '0')
   currentTime.value = `${hours}:${minutes}`
 }
-
 /*****************************************************************************************
  * FUNCTION: updateDate
  * AUTHOR: Muriel Vitale.
@@ -166,9 +162,7 @@ const updateDate = (): void => {
   const monthName = months[now.getMonth()]
   currentDate.value = `${dayName}, ${dayNumber} ${monthName}`
 }
-
 let timer: ReturnType<typeof setInterval> | null = null
-
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale.
@@ -185,7 +179,6 @@ onMounted((): void => {
   updateDate()
   timer = window.setInterval(updateTime, 60_000)
 })
-
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
  * AUTHOR: Muriel Vitale.

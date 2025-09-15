@@ -171,7 +171,8 @@ watch(messageSend2, async (v) => {
     scrollToBottom()
     initPopovers()
   }
-}) /*****************************************************************************************
+})
+/*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Redirects to a specific screen inside the tablet content.

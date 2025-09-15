@@ -91,23 +91,19 @@ type ContactVM = ContactJSON & {
 const screen: Ref<HTMLDivElement | null> = ref(null)
 const clicked = ref<boolean[]>([])
 const redirectStore = useRedirectStore()
-/*****************************************************************************************
- * WATCHER: clicked initialization
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Reactive effect that synchronizes the `clicked` array length with the
- *              number of available contacts.
- *              - Rebuilds `clicked` whenever `contactKeys` changes.
- *              - Ensures that each contact has a corresponding boolean state initialized to `false`.
- * ***************************************************************************************
- * DESCRIPCIÓN: Efecto reactivo que sincroniza la longitud del arreglo `clicked` con la
- *              cantidad de contactos disponibles.
- *              - Reconstruye `clicked` cada vez que cambia `contactKeys`.
- *              - Garantiza que cada contacto tenga un estado booleano correspondiente inicializado en `false`.
- *****************************************************************************************/
-watchEffect(() => {
-  clicked.value = Array(contactKeys.value.length).fill(false)
-})
 
+/*****************************************************************************************
+ * COMPUTED: ContactContent
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Exposes raw contacts from injected `data` to build derived state.
+ * ***************************************************************************************
+ * COMPUTADO: ContactContent
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Expone los contactos crudos desde `data` inyectado para derivar estado.
+ *****************************************************************************************/
+const ContactContent: ComputedRef<Record<string, ContactJSON>> = computed(() => {
+  return data?.value?.contact ?? {}
+})
 /*****************************************************************************************
  * CONSTANT: contactKeys
  * AUTHOR: Muriel Vitale.
@@ -159,15 +155,21 @@ const ContactLink = computed<ContactVM[]>(() => {
   }))
 })
 /*****************************************************************************************
- * COMPUTED: ContactContent
+ * WATCHER: clicked initialization
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Exposes raw contacts from injected `data` to build derived state.
+ * DESCRIPTION: Reactive effect that synchronizes the `clicked` array length with the
+ *              number of available contacts.
+ *              - Rebuilds `clicked` whenever `contactKeys` changes.
+ *              - Ensures that each contact has a corresponding boolean state initialized to `false`.
  * ***************************************************************************************
- * COMPUTADO: ContactContent
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Expone los contactos crudos desde `data` inyectado para derivar estado.
+ * DESCRIPCIÓN: Efecto reactivo que sincroniza la longitud del arreglo `clicked` con la
+ *              cantidad de contactos disponibles.
+ *              - Reconstruye `clicked` cada vez que cambia `contactKeys`.
+ *              - Garantiza que cada contacto tenga un estado booleano correspondiente inicializado en `false`.
  *****************************************************************************************/
-const ContactContent: ComputedRef<Record<string, ContactJSON>> = computed(() => data.value.contact)
+watchEffect(() => {
+  clicked.value = Array(contactKeys.value.length).fill(false)
+})
 /*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.

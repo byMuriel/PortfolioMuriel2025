@@ -72,4 +72,15 @@ const klass = computed(() => {
   font-size: 63%;
   left: 17rem;
 }
+.grayPill {
+  background-color: grey;
+  border-radius: 5rem;
+  color: white;
+  width: 100%;
+  height: 20%;
+  margin: 0;
+  padding: 0.3rem 0.8rem;
+  font-size: 80%;
+  left: 17rem;
+}
 </style>

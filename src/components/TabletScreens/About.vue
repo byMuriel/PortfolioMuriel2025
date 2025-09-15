@@ -102,10 +102,6 @@ import { useRedirectStore } from '@/stores/useRedirect'
 import PillButton from '@/components/CommonComponents/PillButton.vue'
 import LinkLinkedIn from '@/data/contact.json'
 
-type StringDict = Record<string, string>
-type MaybeList = string[] | StringDict | undefined
-type ViewKey = 'Skills' | 'Experience' | 'Projects' | 'Contact' | 'Blog'
-
 interface AboutContentShape {
   intro: string
   Experience: string
@@ -115,15 +111,28 @@ interface AboutContentShape {
   AboutMeTitles?: MaybeList
   AboutMe?: MaybeList
 }
-const screen = ref<HTMLDivElement | null>(null)
-const more = ref<boolean>(false)
-const expanded = ref<boolean[]>([])
-const redirectStore = useRedirectStore()
+type StringDict = Record<string, string>
+type MaybeList = string[] | StringDict | undefined
+// type ViewKey = 'Skills' | 'Experience' | 'Projects' | 'Contact' | 'Blog'
 
 const data = inject<Ref<{ about: AboutContentShape }>>('data')
 if (!data) {
   throw new Error('No se proporcionó "data" via provide().')
 }
+const screen = ref<HTMLDivElement | null>(null)
+const more = ref<boolean>(false)
+const expanded = ref<boolean[]>([])
+const redirectStore = useRedirectStore()
+
+/*****************************************************************************************
+ * CONSTANT: aboutData
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Computed reference that extracts the `about` section from raw data.
+ * ***************************************************************************************
+ * CONSTANTE: aboutData
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Referencia computada que extrae la sección `about` de los datos crudos.
+ *****************************************************************************************/
 const aboutData = computed(() => data.value.about)
 /*****************************************************************************************
  * CONSTANT: AboutContent
@@ -155,6 +164,19 @@ const AboutContent: ComputedRef<AboutContentShape> = computed(
  *              - Provee un string tipado para uso seguro en el template.
  *****************************************************************************************/
 const linkLinkedIn: ComputedRef<string> = computed(() => LinkLinkedIn.linkedIn.link)
+/*****************************************************************************************
+ * FUNCTION: toArray
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Utility function that normalizes values into an array of strings.
+ *              - Returns an empty array if value is falsy.
+ *              - Converts objects into their value arrays.
+ * ***************************************************************************************
+ * FUNCIÓN: toArray
+ * AUTOR: Muriel Vitale.
+ * DESCRIPCIÓN: Función utilitaria que normaliza valores en un arreglo de strings.
+ *              - Retorna un arreglo vacío si el valor es falsy.
+ *              - Convierte objetos en sus valores.
+ *****************************************************************************************/
 const toArray = (v: MaybeList): string[] => {
   if (!v) return []
   return Array.isArray(v) ? v : Object.values(v)
@@ -164,13 +186,11 @@ const toArray = (v: MaybeList): string[] => {
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Computed reference that exposes the "AboutMeTitles" field as a string array.
  *              - Converts the raw data into an array using the `toArray` utility.
- *              - Provides a clean and typed structure for iteration in the template.
  * ***************************************************************************************
  * CONSTANTE: titles
  * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMeTitles" como un arreglo de strings.
  *              - Convierte los datos crudos en un arreglo utilizando el helper `toArray`.
- *              - Entrega una estructura tipada y lista para iterar en el template.
  *****************************************************************************************/
 const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMeTitles))
 /*****************************************************************************************
@@ -178,16 +198,13 @@ const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Computed reference that exposes the "AboutMe" field as a string array.
  *              - Normalizes the raw content into an array with the `toArray` utility.
- *              - Ensures predictable structure for rendering descriptive text in the template.
  * ***************************************************************************************
  * CONSTANTE: paragraphs
  * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMe" como un arreglo de strings.
  *              - Normaliza el contenido crudo en un arreglo con el helper `toArray`.
- *              - Garantiza una estructura predecible para renderizar texto descriptivo en el template.
  *****************************************************************************************/
 const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMe))
-
 /*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.
@@ -204,10 +221,10 @@ function go(to: string) {
  * FUNCTION: setMore
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Sets the "more" flag to show or hide extra content.
- *              - Accepts a boolean value.
  * ***************************************************************************************
+ * FUNCIÓN: setMore
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Ajusta la bandera "more" para mostrar u ocultar contenido extra.
- *              - Recibe un booleano.
  *****************************************************************************************/
 function setMore(value: boolean): void {
   more.value = !!value
@@ -217,6 +234,8 @@ function setMore(value: boolean): void {
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Expands a specific section by index.
  * ***************************************************************************************
+ * FUNCIÓN: showSection
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Expande una sección específica por índice.
  *****************************************************************************************/
 function showSection(i: number): void {
@@ -228,6 +247,8 @@ function showSection(i: number): void {
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Collapses a specific section by index.
  * ***************************************************************************************
+ * FUNCIÓN: hideSection
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Colapsa una sección específica por índice.
  *****************************************************************************************/
 function hideSection(i: number): void {
@@ -239,6 +260,8 @@ function hideSection(i: number): void {
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Toggles a specific section by index.
  * ***************************************************************************************
+ * FUNCIÓN: toggleSection
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Alterna (abre/cierra) una sección por índice.
  *****************************************************************************************/
 function toggleSection(i: number): void {
@@ -251,6 +274,8 @@ function toggleSection(i: number): void {
  * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
  *              - Useful to sync external logic (e.g., Three.js overlays) after mount.
  * ***************************************************************************************
+ * VARIABLE: domReady
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Promesa que se resuelve cuando el componente se monta (DOM listo).
  *              - Útil para sincronizar lógica externa (p. ej., overlays de Three.js) tras el mount.
  *****************************************************************************************/
@@ -264,12 +289,13 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
  *              - Builds a boolean array with the same length as `titles`, all set to false.
  *              - Opens the first section by setting index 0 to true when available.
  * ***************************************************************************************
+ * HOOK DE CICLO DE VIDA: onMounted
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Inicializa el estado del acordeón justo después de montar el componente.
  *              - Crea un arreglo de booleanos con la longitud de `titles`, todos en false.
  *              - Abre la primera sección poniendo el índice 0 en true si existe.
  *****************************************************************************************/
 onMounted(() => {
-  //Primer elemento abierto y el resto cerrado
   expanded.value = titles.value.map((_, i) => i === 0)
 })
 /*****************************************************************************************
@@ -279,6 +305,8 @@ onMounted(() => {
  *              - `screen`: HTMLDivElement ref used as the tablet screen container.
  *              - `domReady`: Promise resolved when the component is mounted.
  * ***************************************************************************************
+ * LLAMADA DE FUNCIÓN: defineExpose
+ * AUTOR: Muriel Vitale.
  * DESCRIPCIÓN: Expone referencias reactivas internas al componente padre.
  *              - `screen`: referencia a HTMLDivElement usada como contenedor de la pantalla.
  *              - `domReady`: Promesa que se resuelve al montar el componente.
