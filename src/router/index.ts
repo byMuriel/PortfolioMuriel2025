@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import IndexView from '../views/IndexView.vue'
+import TabletView from '../views/TabletView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,16 +7,16 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: IndexView,
+      component: TabletView,
     },
     {
       path: '/blog',
-      name: 'blog',
+      name: 'BlogView',
       component: () => import('@/views/BlogView.vue'),
     },
     {
-      path: '/adminBlog',
-      name: 'adminBlog',
+      path: '/admin',
+      name: 'AdminBlogView',
       component: () => import('@/views/AdminBlogView.vue'),
     },
   ],

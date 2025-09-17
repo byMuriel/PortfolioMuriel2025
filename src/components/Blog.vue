@@ -1,20 +1,45 @@
 <template>
-  <div class="d-flex justify-content-center align-items-center bg-light">
-    <div class="container p-4" style="max-width: 600px">
-      <!-- Título -->
-      <div class="text-center mb-4 text-dark">
-        <h1>Blog</h1>
+  <div class="blogContainer d-flex justify-content-center align-items-center bg-light">
+    <!-- Título -->
+    <div class="navBar">
+      <div class="titleContainer">
+        <h1 class="title m-0 p-0">&lt;WRONG BUT WORKED&gt;</h1>
+        <p class="subtitle m-0 p-0">That’s Not How It’s Done, but It Worked for Me.</p>
       </div>
+      <nav class="navbar navbar-expand-lg bg-body-tertiary m-0 p-0">
+        <div class="container-fluid">
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNavAltMarkup"
+            aria-controls="navbarNavAltMarkup"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+            <div class="navbar-nav ms-auto">
+              <a class="nav-link active" aria-current="page" href="#">Home</a>
+              <a class="nav-link" href="#">Features</a>
+              <a class="nav-link" href="#">Pricing</a>
+              <a class="nav-link disabled" aria-disabled="true">Disabled</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </div>
 
-      <!-- Botón Volver -->
-      <!-- <div class="col-3 mb-3 text-center">
+    <!-- Botón Volver -->
+    <!-- <div class="col-3 mb-3 text-center">
         <RouterLink to="/main">
           <button class="btn btn-primary w-100">Go back</button>
         </RouterLink>
       </div> -->
 
-      <!-- Lista de Registros -->
-      <div class="text-center text-dark mt-4">
+    <!-- Lista de Registros -->
+    <!-- <div class="text-center text-dark mt-4">
         <h2>Items:</h2>
         <ul class="list-unstyled mt-3">
           <li
@@ -29,8 +54,7 @@
             </div>
           </li>
         </ul>
-      </div>
-    </div>
+      </div> -->
   </div>
 </template>
 
@@ -128,11 +152,132 @@ onMounted(listar)
 </script>
 
 <style>
-@media (min-width: 1024px) {
-  .titulo {
-    min-height: 100vh;
-    display: flex;
+.blogContainer {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+.navBar {
+  position: absolute;
+  top: 0%;
+  width: 100%;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1px solid rgb(20, 16, 16);
+  color: rgb(100, 100, 100);
+  padding: 1rem;
+}
+.title {
+  font-weight: 800;
+}
+.subtitle {
+  position: relative;
+  top: -0.5rem;
+  font-weight: 600;
+}
+@media (max-width: 576px) {
+  /* Pegamos el contenido arriba, no centrado */
+  .blogContainer {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  /* Header en una fila: (título+subtítulo) a la izq, botón a la der */
+  .navBar {
+    position: absolute; /* referencia para el botón y el overlay */
+    top: 0;
+    left: 0;
+    right: 0;
+    flex-direction: row;
     align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+  }
+
+  .titleContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding-right: 3rem; /* espacio para el botón */
+  }
+
+  .title {
+    font-size: 1.4rem;
+    margin: 0;
+  }
+  .subtitle {
+    font-size: 0.8rem;
+    margin: 0;
+    top: 0; /* anula offset de desktop */
+  }
+
+  /* Botón fijo en la esquina del header */
+  .navBar .navbar {
+    position: static;
+    background: transparent;
+    box-shadow: none;
+  }
+  .navBar .navbar-toggler {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    z-index: 1050;
+    margin: 0;
+    border: none;
+  }
+
+  /* Overlay del menú: una sola posición + transición suave */
+  .navBar .navbar-collapse,
+  .navBar .collapsing {
+    position: absolute;
+    top: 100%; /* justo debajo del header */
+    right: 0;
+    width: 60%; /* ajusta 60–80% a gusto */
+    background: #f8f9fa;
+    border-left: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 1rem;
+    z-index: 1040;
+  }
+
+  /* Evita el “salto” de Bootstrap (altura animada) */
+  .navBar .collapsing {
+    height: auto !important;
+    transition: none !important;
+    overflow: visible !important;
+  }
+
+  /* Nuestra transición (sin cambiar posición) */
+  .navBar .navbar-collapse {
+    transform-origin: top right;
+    transition:
+      transform 200ms ease,
+      opacity 200ms ease;
+  }
+  .navBar .navbar-collapse:not(.show) {
+    transform: scaleY(0);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .navBar .navbar-collapse.show {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+
+  .navBar .navbar-collapse .navbar-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .navBar .navbar-collapse .nav-link {
+    padding: 0.5rem 0;
   }
 }
 </style>

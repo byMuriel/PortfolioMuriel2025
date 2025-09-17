@@ -19,11 +19,11 @@
       <button class="btn app-button" @click="goTo('experience')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/experienceIcon.png" alt="" />
       </button>
-      <button class="btn app-button" @click="goTo('skills')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/skillsIcon.png" alt="" />
-      </button>
       <button class="btn app-button" @click="goTo('contact')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/contactIcon.png" alt="" />
+      </button>
+      <button class="btn app-button" @click="goTo('skills')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/skillsIcon.png" alt="" />
       </button>
       <button class="btn app-button" @click="goTo('blog')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/blogIcon.png" alt="" />
@@ -34,6 +34,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
 type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
@@ -77,7 +80,7 @@ const goTo = (route: RouteKey): void => {
   else if (route === 'projects') emit('change-screen', 'Projects')
   else if (route === 'contact') emit('change-screen', 'Contact')
   else if (route === 'contactEmail') emit('change-screen', 'ContactEmail')
-  else if (route === 'blog') emit('change-screen', 'Blog')
+  else if (route === 'blog') router.push({ name: 'BlogView' })
 }
 /*****************************************************************************************
  * VARIABLE: domReady
@@ -257,7 +260,12 @@ onBeforeUnmount((): void => {
   padding: 1rem;
 }
 .tamanioIconoApp {
-  width: 100%;
+  width: 6rem;
+}
+.icon {
+  width: 200px; /* ajusta al tamaño que uses para About, Projects, etc */
+  height: 200px;
+  object-fit: contain; /* evita que se deforme */
 }
 .app-button {
   background: none;
