@@ -30,4 +30,5 @@ coverage
 *.tsbuildinfo
 
 src\data
+src\services
 public\api
