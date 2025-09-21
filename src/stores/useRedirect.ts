@@ -9,6 +9,7 @@ export type ScreenName =
   | 'Contact'
   | 'ContactEmail'
   | 'Skills'
+  | 'Education'
   | 'Blog'
 
 export const useRedirectStore = defineStore('redirect', {
@@ -39,6 +40,9 @@ export const useRedirectStore = defineStore('redirect', {
           break
         case 'Contact':
           this.current = 'Contact'
+          break
+        case 'Education':
+          this.current = 'Education'
           break
         case 'ContactEmail':
           console.log('ContactEmail2')

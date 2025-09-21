@@ -19,12 +19,15 @@
       <button class="btn app-button" @click="goTo('experience')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/experienceIcon.png" alt="" />
       </button>
-      <button class="btn app-button" @click="goTo('contact')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/contactIcon.png" alt="" />
-      </button>
       <button class="btn app-button" @click="goTo('skills')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/skillsIcon.png" alt="" />
       </button>
+      <button class="btn app-button" @click="goTo('contact')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/contactIcon.png" alt="" />
+      </button>
+      <!-- <button class="btn app-button" @click="goTo('education')">
+        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/educationIcon.png" alt="" />
+      </button> -->
       <button class="btn app-button" @click="goTo('blog')">
         <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/blogIcon.png" alt="" />
       </button>
@@ -38,8 +41,24 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
-type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
+type RouteKey =
+  | 'skills'
+  | 'experience'
+  | 'about'
+  | 'projects'
+  | 'contact'
+  | 'blog'
+  | 'contactEmail'
+  | 'education'
+type ViewKey =
+  | 'Skills'
+  | 'Experience'
+  | 'About'
+  | 'Projects'
+  | 'Contact'
+  | 'Blog'
+  | 'ContactEmail'
+  | 'Education'
 
 // State Flags
 const currentTime: Ref<string> = ref('')
@@ -80,6 +99,7 @@ const goTo = (route: RouteKey): void => {
   else if (route === 'projects') emit('change-screen', 'Projects')
   else if (route === 'contact') emit('change-screen', 'Contact')
   else if (route === 'contactEmail') emit('change-screen', 'ContactEmail')
+  else if (route === 'education') emit('change-screen', 'Education')
   else if (route === 'blog') router.push({ name: 'BlogView' })
 }
 /*****************************************************************************************

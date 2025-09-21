@@ -29,6 +29,9 @@ coverage
 
 *.tsbuildinfo
 
-src\data
-src\services
-public\api
+public
+src/data/
+src/services/
+php/
+.env
+.env.*

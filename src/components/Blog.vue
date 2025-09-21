@@ -1,6 +1,6 @@
 <template>
-  <div class="blogContainer d-flex justify-content-center align-items-center bg-light">
-    <!-- Título -->
+  <div class="blogContainer bg-light">
+    <!-- Header -->
     <div class="navBar">
       <div class="titleContainer">
         <h1 class="title m-0 p-0">&lt;WRONG BUT WORKED&gt;</h1>
@@ -21,145 +21,85 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
             <div class="navbar-nav ms-auto">
-              <a class="nav-link active" aria-current="page" href="#">Home</a>
-              <a class="nav-link" href="#">Features</a>
-              <a class="nav-link" href="#">Pricing</a>
-              <a class="nav-link disabled" aria-disabled="true">Disabled</a>
+              <!-- <a
+                class="nav-link active"
+                aria-current="page"
+                href=""
+                @click.prevent="activate('Home')"
+                >Home</a
+              > -->
+              <a class="nav-link" href="" @click.prevent="activate('Posts')">Posts</a>
+              <a class="nav-link" href="" @click.prevent="activate('About')">About Me</a>
+              <a class="nav-link" href="" @click.prevent="activate('Contact')">Contact</a>
+              <span class="portfolioLink">
+                <router-link
+                  class="nav-link"
+                  to="/"
+                  :class="{ active: $route.path === '/' }"
+                  style="color: #f20c7b"
+                >
+                  Go to my Portfolio
+                </router-link>
+              </span>
             </div>
           </div>
         </div>
       </nav>
     </div>
 
-    <!-- Botón Volver -->
-    <!-- <div class="col-3 mb-3 text-center">
-        <RouterLink to="/main">
-          <button class="btn btn-primary w-100">Go back</button>
-        </RouterLink>
-      </div> -->
-
-    <!-- Lista de Registros -->
-    <!-- <div class="text-center text-dark mt-4">
-        <h2>Items:</h2>
-        <ul class="list-unstyled mt-3">
-          <li
-            v-for="item in datos"
-            :key="item.id"
-            class="border rounded p-2 mb-2 d-flex flex-column text-start"
-          >
-            <span class="fw-bold text-dark">{{ item.id }} - {{ item.name }}</span>
-            <p class="mb-1">{{ item.content }}</p>
-            <div class="d-flex justify-content-between align-items-center">
-              <span>{{ item.date }}</span>
-            </div>
-          </li>
-        </ul>
-      </div> -->
+    <!-- Content -->
+    <div class="blogContent">
+      <HomeBlog v-if="activeView === 'HomeBlog'" />
+      <PostListBlog v-if="activeView === 'PostListBlog'" />
+      <ProjectsBlog v-else-if="activeView === 'ProjectsBlog'" />
+      <AboutBlog v-else-if="activeView === 'AboutBlog'" />
+      <ContactBlog v-else-if="activeView === 'ContactBlog'" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import HomeBlog from '@/components/BlogScreens/HomeBlog.vue'
+import PostListBlog from '@/components/BlogScreens/PostListBlog.vue'
+import ProjectsBlog from '@/components/BlogScreens/ProjectsBlog.vue'
+import AboutBlog from '@/components/BlogScreens/AboutBlog.vue'
+import ContactBlog from '@/components/BlogScreens/ContactBlog.vue'
 
-// Tipo para un item de la lista
-interface Item {
-  id: number
-  name: string
-  content: string
-  date: string
-}
-
-// Tipo de respuesta de API
-interface MensajeResponse {
-  mensaje: string
-}
-
-const nombre = ref<string>('')
-const datos = ref<Item[]>([])
-
-/**************************************************************
- * Method: listar().
- * Parameters: None.
- * Description: Function that makes a call to /api/read to read
- *              the stored data.
- * Date: 05.07.2025
- * Author: Muriel Vitale
- ***************************************************************/
-async function listar(): Promise<void> {
-  console.log('listar')
-
-  // const res = await fetch('/api/read')
-  const res = await fetch('http://localhost/Portafolio2025_Services/api.php/api/read')
-  console.log('res:' + JSON.stringify(res))
-  const json: Item[] = await res.json()
-  datos.value = json
-  // datos.value = await res.json()
-}
-
-/**************************************************************
- * Method: crear().
- * Parameters: None.
- * Description: Function that creates a new record and saves it.
- * Date: 05.07.2025
- * Author: Muriel Vitale
- ***************************************************************/
-async function crear(): Promise<void> {
-  if (!nombre.value) {
-    alert('Ingrese un nombre')
-    return
-  }
-
-  const res = await fetch('http://localhost/Portafolio2025_Services/api.php/api/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre: nombre.value }),
-  })
-  const data: MensajeResponse = await res.json()
-  alert(data.mensaje)
-  nombre.value = ''
-  listar()
-}
-
-/**************************************************************
- * Method: eliminar().
- * Parameters: None.
- * Description: Function that deletes an existing record.
- * Date: 05.07.2025
- * Author: Muriel Vitale
- ***************************************************************/
-async function eliminar(id: number): Promise<void> {
-  try {
-    const res = await fetch(`http://localhost/Portafolio2025_Services/api.php/api/delete/${id}`, {
-      method: 'DELETE',
-    })
-
-    if (!res.ok) {
-      const errorText = await res.text()
-      throw new Error(`Error del servidor: ${res.status} - ${errorText}`)
-    }
-
-    const data: MensajeResponse = await res.json()
-    alert(data.mensaje)
-    listar()
-  } catch (error) {
-    console.error('Error eliminando:', error)
-    alert('Ocurrió un error al eliminar.')
+const activeView = ref<string>('PostListBlog')
+function activate(option: 'Posts' | 'Projects' | 'About' | 'Contact') {
+  switch (option) {
+    case 'Posts':
+      activeView.value = 'PostListBlog'
+      break
+    case 'Projects':
+      activeView.value = 'ProjectsBlog'
+      break
+    case 'About':
+      activeView.value = 'AboutBlog'
+      break
+    case 'Contact':
+      activeView.value = 'ContactBlog'
+      break
+    default:
+      activeView.value = 'PostListBlog'
   }
 }
-
-onMounted(listar)
 </script>
 
-<style>
+<style scoped lang="scss">
+@use '@/styles/colors' as *;
 .blogContainer {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 .navBar {
-  position: absolute;
+  position: sticky;
   top: 0%;
   width: 100%;
   height: fit-content;
@@ -170,27 +110,48 @@ onMounted(listar)
   border-bottom: 1px solid rgb(20, 16, 16);
   color: rgb(100, 100, 100);
   padding: 1rem;
+  z-index: 1040;
 }
 .title {
+  width: fit-content;
   font-weight: 800;
 }
 .subtitle {
+  width: 100%;
+  text-align: center;
   position: relative;
   top: -0.5rem;
   font-weight: 600;
 }
+.navbar-nav {
+  margin-top: 0.5rem;
+}
+.nav-link {
+  padding: 0.25rem;
+}
+.portfolioLink {
+  background-color: rgb(165, 236, 227);
+  background-color: rgb(58, 55, 55);
+  border-radius: 0.7rem;
+  color: $brilliantBlue;
+  text-shadow: 0rem 0rem 0.2rem rgb(56, 141, 56);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.blogContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
 @media (max-width: 576px) {
-  /* Pegamos el contenido arriba, no centrado */
   .blogContainer {
     display: flex !important;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
   }
-
-  /* Header en una fila: (título+subtítulo) a la izq, botón a la der */
   .navBar {
-    position: absolute; /* referencia para el botón y el overlay */
+    position: sticky;
     top: 0;
     left: 0;
     right: 0;
@@ -199,15 +160,13 @@ onMounted(listar)
     justify-content: space-between;
     padding: 0.75rem 1rem;
   }
-
   .titleContainer {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
-    padding-right: 3rem; /* espacio para el botón */
+    padding-right: 3rem;
   }
-
   .title {
     font-size: 1.4rem;
     margin: 0;
@@ -215,10 +174,8 @@ onMounted(listar)
   .subtitle {
     font-size: 0.8rem;
     margin: 0;
-    top: 0; /* anula offset de desktop */
+    top: 0;
   }
-
-  /* Botón fijo en la esquina del header */
   .navBar .navbar {
     position: static;
     background: transparent;
@@ -232,29 +189,24 @@ onMounted(listar)
     margin: 0;
     border: none;
   }
-
-  /* Overlay del menú: una sola posición + transición suave */
   .navBar .navbar-collapse,
   .navBar .collapsing {
     position: absolute;
-    top: 100%; /* justo debajo del header */
+    top: 100%;
     right: 0;
-    width: 60%; /* ajusta 60–80% a gusto */
-    background: #f8f9fa;
+    width: 44%;
+    // background: #f8f9fa;
+    background: #f8f9faa6;
     border-left: 1px solid #ddd;
     border-bottom: 1px solid #ddd;
     padding: 1rem;
     z-index: 1040;
   }
-
-  /* Evita el “salto” de Bootstrap (altura animada) */
   .navBar .collapsing {
     height: auto !important;
     transition: none !important;
     overflow: visible !important;
   }
-
-  /* Nuestra transición (sin cambiar posición) */
   .navBar .navbar-collapse {
     transform-origin: top right;
     transition:
@@ -270,7 +222,6 @@ onMounted(listar)
     transform: scaleY(1);
     opacity: 1;
   }
-
   .navBar .navbar-collapse .navbar-nav {
     display: flex;
     flex-direction: column;
