@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import { ref, onMounted, shallowRef, type Ref, type ShallowRef, watch } from 'vue'
 import { useRedirectStore, type ScreenName } from '@/stores/useRedirect'
+import { useSkillsStore } from '@/stores/useSkills'
 import { useLastScreen } from '@/stores/useLastScreen'
 import type { Component } from 'vue'
 
@@ -26,6 +27,7 @@ import Contact from './TabletScreens/Contact.vue'
 import ContactEmail from './TabletScreens/ContactEmail.vue'
 import Blog from './Blog.vue'
 
+const preloaded = new Set<string>()
 const screen: Ref<HTMLDivElement | null> = ref(null)
 const redirectStore = useRedirectStore()
 const lastScreen = useLastScreen()
@@ -130,6 +132,74 @@ const toReturn = (): void => {
     redirectStore.current = 'Init'
   }
 }
+
+function onIdle(cb: () => void) {
+  const ric = (window as any).requestIdleCallback
+  if (typeof ric === 'function') {
+    ric(cb, { timeout: 1500 })
+  } else {
+    setTimeout(cb, 0)
+  }
+}
+
+// Inyecta <link rel="preload" as="image"> para los críticos
+function injectPreload(href: string) {
+  if (!href) return
+  if (document.head.querySelector(`link[rel="preload"][href="${href}"]`)) return
+  const link = document.createElement('link')
+  link.rel = 'preload'
+  link.as = 'image'
+  link.href = href
+  document.head.appendChild(link)
+}
+
+// Descarga + decodifica una imagen (para que pinte sin flash)
+async function warmImage(src: string) {
+  if (!src || preloaded.has(src)) return
+  preloaded.add(src)
+  try {
+    const img = new Image()
+    img.decoding = 'async'
+    img.src = src
+    if ('decode' in img) await img.decode()
+  } catch {
+    // silencioso
+  }
+}
+// Toma los primeros logos visibles de Skills y los “precalienta”
+async function prewarmSkillsLogos() {
+  const store = useSkillsStore()
+  try {
+    await store.load() // respeta el TTL del store
+    const urls: string[] = []
+    const cats = store.displayCategories.slice(0, 3) // primeras categorías (above the fold)
+    for (const c of cats) {
+      for (const s of store.byCategory(c)) {
+        const url = s.logo ?? '/assets/SkillsLogos/LogoM.png'
+        if (url) urls.push(url)
+        if (urls.length >= 12) break
+      }
+      if (urls.length >= 12) break
+    }
+
+    // Preload fuerte para 2–3 críticas (mejor primer paint)
+    urls.slice(0, 3).forEach(injectPreload)
+
+    // Resto en idle (descarga + decode sin bloquear)
+    onIdle(() => {
+      urls.forEach((u) => {
+        void warmImage(u)
+      })
+    })
+  } catch {
+    // si falla, no pasa nada
+  }
+}
+onMounted(() => {
+  // Apenas la tablet “existe”, vamos calentando los logos de Skills
+  prewarmSkillsLogos()
+})
+
 /*****************************************************************************************
  * FUNCTION CALL: defineExpose
  * AUTHOR: Muriel Vitale.

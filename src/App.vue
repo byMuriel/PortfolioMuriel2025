@@ -1,7 +1,11 @@
 <!-- src\App.vue -->
 <template>
   <div id="app" class="min-vh-100 bg-dark text-white">
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <keep-alive include="Skills">
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
   </div>
 </template>
 

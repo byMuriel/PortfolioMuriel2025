@@ -43,79 +43,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+defineOptions({ name: 'Skills' })
+import { computed, onMounted } from 'vue'
+import { useSkillsStore } from '@/stores/useSkills'
 import { useRedirectStore } from '@/stores/useRedirect'
-import { fetchSkills, type SkillDTO } from '@/services/skills'
-import { fetchCategoryOrder } from '@/services/categories'
 
-type SkillVM = { name: string; logo: string | null; categories: string[] }
 const FALLBACK_LOGO = '/assets/SkillsLogos/LogoM.png'
 
 const redirectStore = useRedirectStore()
+const store = useSkillsStore()
 
-const loading = ref(true)
-const error = ref<string | null>(null)
-const apiSkills = ref<SkillDTO[]>([])
-const orderedCategories = ref<string[]>([])
-
-onMounted(async () => {
-  try {
-    // datos
-    apiSkills.value = await fetchSkills()
-    // orden de categorías según BD
-    orderedCategories.value = await fetchCategoryOrder()
-  } catch (e: any) {
-    error.value = e?.message ?? 'Error cargando skills'
-  } finally {
-    loading.value = false
+onMounted(() => {
+  // Solo carga si el store NO está fresco; no esperamos (no bloquea el primer paint)
+  if (!store.isFresh) {
+    // sin await: si ya precalentaste, las imágenes salen directo desde cache
+    void store.load()
   }
 })
 
-function resolveLogo(raw: string | null) {
-  if (!raw) return null
-  if (raw.startsWith('/src/assets/images/SkillsLogos/')) {
-    return raw.replace('/src/assets/images/SkillsLogos/', '/assets/SkillsLogos/')
-  }
-  return raw
-}
-
-const skills = computed<SkillVM[]>(() =>
-  apiSkills.value.map((s) => ({
-    name: s.name,
-    logo: resolveLogo(s.logo_url),
-    categories: s.categories ?? [],
-  })),
-)
-
-const uniqueCategories = computed<string[]>(() => {
-  const count = new Map<string, number>()
-  const firstIdx = new Map<string, number>()
-  skills.value.forEach((s, i) => {
-    new Set(s.categories).forEach((c) => {
-      if (!firstIdx.has(c)) firstIdx.set(c, i)
-      count.set(c, (count.get(c) ?? 0) + 1)
-    })
-  })
-  const cats = Array.from(count.keys())
-  cats.sort((a, b) => {
-    const diff = count.get(b)! - count.get(a)!
-    if (diff !== 0) return diff
-    return (firstIdx.get(a) ?? 0) - (firstIdx.get(b) ?? 0)
-  })
-  return cats
-})
-
-// ← usa el orden del backend si existe, si no el cálculo local
-const displayCategories = computed<string[]>(() =>
-  orderedCategories.value.length ? orderedCategories.value : uniqueCategories.value,
-)
-
-const groupedByCategory = computed<Record<string, SkillVM[]>>(() => {
-  const groups: Record<string, SkillVM[]> = {}
-  for (const s of skills.value) for (const c of s.categories) (groups[c] ??= []).push(s)
-  return groups
-})
-const byCategory = (cat: string) => groupedByCategory.value[cat] ?? []
+const displayCategories = computed(() => store.displayCategories)
+const byCategory = (cat: string) => store.byCategory(cat)
 
 function go(to: string) {
   useRedirectStore().redirect(to)
@@ -164,6 +111,7 @@ function go(to: string) {
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
+  overflow: hidden;
 }
 .skillCard {
   scroll-snap-align: start;
@@ -175,8 +123,12 @@ function go(to: string) {
   margin-bottom: 1rem;
 }
 .imgLogo {
+  display: block;
   border-radius: 9%;
   width: 100%;
+  height: 100%;
+  object-fit: contain;
+  backface-visibility: hidden;
   margin: 0;
   padding: 0;
 }
