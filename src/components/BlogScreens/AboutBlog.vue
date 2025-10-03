@@ -1,30 +1,32 @@
 <!-- src/components/BlogScreens/AboutBlog.vue -->
 <template>
   <section class="aboutBlog">
-    <!-- Header -->
+    <!-- HERO -->
     <div class="hero card">
       <div class="hero__imgWrap">
-        <img class="hero__img" src="/src/assets/images/AboutMe/muriel.png" alt="About image" />
+        <!-- Imagen dinámica desde la BD -->
+        <img class="hero__img" :src="about?.img" alt="About image" />
       </div>
       <div class="hero__body">
-        <h2 class="hero__name">{{ about.intro }}</h2>
+        <h2 class="hero__name">{{ about?.intro }}</h2>
 
         <ul class="hero__meta list-unstyled m-0">
           <li class="hero__metaItem">
             <i class="bi bi-briefcase me-2"></i>
-            <strong class="me-1">Position:</strong> {{ about.Position }}
+            <strong class="me-1">Position:</strong> {{ about?.Position }}
           </li>
           <li class="hero__metaItem">
             <i class="bi bi-geo-alt me-2"></i>
-            <strong class="me-1">Location:</strong> {{ about.Ubication }}
+            <strong class="me-1">Location:</strong> {{ about?.Ubication }}
           </li>
           <li class="hero__metaItem">
             <i class="bi bi-building me-2"></i>
-            <strong class="me-1">Experience:</strong> {{ about.Experience }}
+            <strong class="me-1">Experience:</strong> {{ about?.Experience }}
           </li>
         </ul>
 
-        <div class="hero__skills">
+        <!-- SKILLS -->
+        <div class="hero__skills" v-if="skills.length">
           <h3 class="sectionTitle">Skills</h3>
           <ul class="skills">
             <li v-for="(s, i) in skills" :key="i" class="skills__item">{{ s }}</li>
@@ -32,10 +34,10 @@
         </div>
       </div>
     </div>
-    <!-- About me sections -->
+
+    <!-- ABOUT ME -->
     <div class="about card">
       <h3 class="sectionTitle mb-3">About me</h3>
-
       <div class="about__grid">
         <article v-for="(block, idx) in aboutBlocks" :key="idx" class="about__item">
           <h4 class="about__title">{{ block.title }}</h4>
@@ -47,31 +49,46 @@
 </template>
 
 <script setup lang="ts">
-import about from '@/data/about.json'
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { fetchAboutForBlog, type AboutPayload } from '@/services/about'
 
 type Block = { title: string; text: string }
 
-const skills = computed(() =>
-  (about.Skills ?? [])
-    .map((s) =>
-      String(s)
+const about = ref<AboutPayload | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    about.value = await fetchAboutForBlog()
+  } catch (e: any) {
+    error.value = e?.message ?? 'Error cargando About'
+  } finally {
+    loading.value = false
+  }
+})
+
+const skills = computed(() => {
+  const s = about.value?.Skills ?? []
+  return s
+    .map((x) =>
+      String(x)
         .replace(/^\s*\/\s*/g, '')
         .replace(/\s*,\s*$/g, '')
         .trim(),
     )
-    .filter(Boolean),
-)
+    .filter(Boolean)
+})
+
 const aboutBlocks = computed<Block[]>(() => {
-  const entries: Block[] = []
-  const titles = about.AboutMeTitles ?? {}
-  const texts = about.AboutMe ?? {}
-  Object.keys(titles)
-    .sort((a, b) => Number(a) - Number(b))
-    .forEach((k) => {
-      entries.push({ title: (titles as any)[k], text: (texts as any)[k] })
-    })
-  return entries
+  const titles = about.value?.AboutMeTitles ?? []
+  const texts = about.value?.AboutMe ?? []
+  const out: Block[] = []
+  for (let i = 0; i < Math.max(titles.length, texts.length); i++) {
+    out.push({ title: titles[i] ?? '', text: texts[i] ?? '' })
+  }
+  return out
 })
 </script>
 

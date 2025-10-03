@@ -21,13 +21,6 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
             <div class="navbar-nav ms-auto">
-              <!-- <a
-                class="nav-link active"
-                aria-current="page"
-                href=""
-                @click.prevent="activate('Home')"
-                >Home</a
-              > -->
               <a class="nav-link" href="" @click.prevent="activate('Posts')">Posts</a>
               <a class="nav-link" href="" @click.prevent="activate('About')">About Me</a>
               <a class="nav-link" href="" @click.prevent="activate('Contact')">Contact</a>

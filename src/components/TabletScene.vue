@@ -132,21 +132,6 @@ const data = ref({})
  *                 - Establecer `showPreloader` en falso.
  *****************************************************************************************/
 onMounted(async () => {
-  const [about, contact, experience, projects, skills] = await Promise.all([
-    import('@/data/about.json'),
-    import('@/data/contact.json'),
-    import('@/data/experience.json'),
-    import('@/data/projects.json'),
-    import('@/data/skills.json'),
-  ])
-
-  data.value = {
-    about: about.default,
-    contact: contact.default,
-    experience: experience.default,
-    projects: projects.default,
-    skills: skills.default,
-  }
   await new Promise<void>((resolve) => {
     if (document.readyState === 'complete') {
       resolve()
@@ -705,57 +690,84 @@ function animateCameraZoom(elapsedTime: number, delay: number, durationCameraZoo
 /*****************************************************************************************
  * FUNCTION: updateOverlayPosition
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Projects the 3D tablet screen area into 2D screen space and updates the
- *              HTML overlay (#screen-overlay) to match position and size in pixels.
- *              - Computes world coords for center, top-left, and bottom-right of the 3D screen.
- *              - Projects them with the active camera and derives pixel bounds.
- *              - Applies computed left/top/width/height to the overlay element.
+ * DESCRIPTION: Projects the tablet’s 3D screen mesh into 2D page coordinates and resizes
+ *              the HTML overlay (#screen-overlay) accordingly.
+ *              - Uses the renderer canvas bounding rect (`getBoundingClientRect`) to account
+ *                for the canvas’ real position and size within the page.
+ *              - Computes world coordinates for the center and two corners (top-left and
+ *                bottom-right) of the 3D tablet screen mesh.
+ *              - Projects those points with the active camera into normalized device space
+ *                and converts them into pixel positions relative to the canvas.
+ *              - Adjusts width/height with a margin to avoid clipping.
+ *              - Updates the overlay element’s CSS (`left`, `top`, `width`, `height`) using
+ *                page coordinates (rect.left/top + projected values).
+ *              - Keeps the overlay centered with a `translate(-50%, -50%)` transform.
+ *
+ * NOTES:
+ *   - This updated version fixes misalignments that occurred when switching tabs or when
+ *     the canvas was not positioned at the top-left of the viewport.
+ *   - Relies on up-to-date camera and screen world matrices; must be called after rendering
+ *     or when the layout changes (resize/visibility).
  * ***************************************************************************************
- * DESCRIPCIÓN: Proyecta el área de la pantalla 3D de la tablet al espacio 2D y actualiza
- *              el overlay HTML (#screen-overlay) para que coincida en posición y tamaño.
- *              - Calcula coordenadas de mundo del centro, esquina sup. izq. y esquina inf. der.
- *              - Las proyecta con la cámara activa y obtiene límites en píxeles.
- *              - Asigna left/top/width/height calculados al elemento overlay.
+ * DESCRIPCIÓN: Proyecta el mesh 3D de la pantalla de la tablet a coordenadas 2D de página
+ *              y ajusta el overlay HTML (#screen-overlay) en consecuencia.
+ *              - Usa el rectángulo del canvas (`getBoundingClientRect`) para tener en cuenta
+ *                la posición y tamaño reales del canvas en la página.
+ *              - Calcula coordenadas de mundo para el centro y dos esquinas (sup. izq. e
+ *                inf. der.) de la pantalla 3D de la tablet.
+ *              - Proyecta esos puntos con la cámara activa a espacio normalizado y los
+ *                convierte a píxeles relativos al canvas.
+ *              - Ajusta ancho/alto con un margen para evitar cortes.
+ *              - Actualiza las propiedades CSS (`left`, `top`, `width`, `height`) del overlay
+ *                usando coordenadas de página (rect.left/top + valores proyectados).
+ *              - Mantiene el overlay centrado con `translate(-50%, -50%)`.
+ *
+ * NOTAS:
+ *   - Esta versión corrige desalineaciones que ocurrían al cambiar de pestaña o cuando
+ *     el canvas no estaba alineado al borde superior izquierdo del viewport.
+ *   - Depende de que la cámara y la matriz de mundo de la pantalla estén actualizadas;
+ *     debe llamarse después de renderizar o cuando cambie el layout (resize/visibility).
  *****************************************************************************************/
 function updateOverlayPosition(): void {
   if (!screen || !camera || !renderer) return
 
-  const vector: THREE.Vector3 = new THREE.Vector3()
-  vector.setFromMatrixPosition(screen.matrixWorld)
-  vector.project(camera)
+  // 1) Usa el rect real del canvas (posición y tamaño en la página)
+  const rect = renderer.domElement.getBoundingClientRect()
+  const widthHalf = rect.width / 2
+  const heightHalf = rect.height / 2
 
-  const widthHalf: number = renderer.domElement.clientWidth / 2
-  const heightHalf: number = renderer.domElement.clientHeight / 2
-  const center: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
-  const topLeft: THREE.Vector3 = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
-  const bottomRight: THREE.Vector3 = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
+  // 2) Proyecta centro y esquinas de la pantalla 3D
+  const center = new THREE.Vector3(0, 0, 0)
+  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
+  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
+
   screen.updateMatrixWorld()
-  center.applyMatrix4(screen.matrixWorld)
-  topLeft.applyMatrix4(screen.matrixWorld)
-  bottomRight.applyMatrix4(screen.matrixWorld)
-  center.project(camera)
-  topLeft.project(camera)
-  bottomRight.project(camera)
+  center.applyMatrix4(screen.matrixWorld).project(camera)
+  topLeft.applyMatrix4(screen.matrixWorld).project(camera)
+  bottomRight.applyMatrix4(screen.matrixWorld).project(camera)
 
-  const centerX: number = center.x * widthHalf + widthHalf
-  const centerY: number = -center.y * heightHalf + heightHalf
+  // 3) Convierte a píxeles relativos al canvas
+  const cx = center.x * widthHalf + widthHalf
+  const cy = -center.y * heightHalf + heightHalf
 
-  const x1: number = topLeft.x * widthHalf + widthHalf
-  const y1: number = -topLeft.y * heightHalf + heightHalf
+  const x1 = topLeft.x * widthHalf + widthHalf
+  const y1 = -topLeft.y * heightHalf + heightHalf
+  const x2 = bottomRight.x * widthHalf + widthHalf
+  const y2 = -bottomRight.y * heightHalf + heightHalf
 
-  const x2: number = bottomRight.x * widthHalf + widthHalf
-  const y2: number = -bottomRight.y * heightHalf + heightHalf
+  const margin = 5
+  const pixelWidth = Math.max(0, Math.abs(x2 - x1) - margin)
+  const pixelHeight = Math.max(0, Math.abs(y2 - y1) - 3 * margin)
 
-  const margin: number = 5
-  const pixelWidth: number = Math.abs(x2 - x1) - margin
-  const pixelHeight: number = Math.abs(y2 - y1) - 3 * margin
-
+  // 4) Posiciona el overlay en coordenadas de página sumando rect.left/top
   const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
   if (overlay) {
-    overlay.style.left = `${centerX}px`
-    overlay.style.top = `${centerY}px`
+    overlay.style.position = 'absolute'
+    overlay.style.left = `${rect.left + cx}px`
+    overlay.style.top = `${rect.top + cy}px`
     overlay.style.width = `${pixelWidth}px`
     overlay.style.height = `${pixelHeight}px`
+    overlay.style.transform = 'translate(-50%, -50%)'
   }
 }
 /*****************************************************************************************
@@ -828,27 +840,42 @@ function animateSecondZoom(elapsedTime: number): void {
  *              - Records the initial start time on the first call.
  *              - Calculates elapsed time since the beginning.
  *              - Animates the tablet’s Y-axis rotation during the first `durationRotation` seconds.
- *              - Starts the camera zoom animation after the tablet rotation begins.
- *              - Renders the current frame of the scene.
- *              - Triggers the HTML overlay and tablet content visibility slightly before the end.
- *              - Continues requesting animation frames until the full sequence completes.
+ *              - Animates the camera zoom-in towards the tablet.
+ *              - On desktop: triggers the HTML overlay slightly before the end of the intro
+ *                and continuously reprojects its position every frame to keep it aligned.
+ *              - On mobile: launches a secondary short zoom (`animateSecondZoom`) before
+ *                showing the overlay and content.
+ *              - Renders the current frame of the scene on each iteration.
+ *              - Performs a final overlay reposition at the end of the animation for safety.
+ *              - Continues requesting animation frames until both the intro and (if mobile)
+ *                the secondary zoom are fully completed.
  *
  * NOTES:
  *   - `overlayShown` prevents multiple overlay updates.
- *   - `recorteTiempoParaMostrarLaPantalla` is a time offset to show content slightly earlier.
+ *   - `recorteTiempoParaMostrarLaPantalla` is a time offset to reveal content slightly earlier.
+ *   - On desktop, `updateOverlayPosition()` is now called every frame to avoid misalignment
+ *     when switching tabs or during animation pauses.
  * ***************************************************************************************
  * DESCRIPCIÓN: Bucle principal de animación que orquesta la secuencia de entrada de la tablet.
  *              - Registra el tiempo de inicio en la primera llamada.
  *              - Calcula el tiempo transcurrido desde el inicio.
- *              - Anima la rotación sobre el eje Y de la tablet durante los primeros `durationRotation` segundos.
- *              - Inicia la animación del zoom de cámara una vez que comienza la rotación.
- *              - Renderiza el fotograma actual de la escena.
- *              - Muestra el overlay HTML y el contenido de la tablet ligeramente antes del final.
- *              - Continúa solicitando nuevos frames hasta que finaliza toda la secuencia.
+ *              - Anima la rotación sobre el eje Y de la tablet durante los primeros
+ *                `durationRotation` segundos.
+ *              - Anima el zoom de la cámara hacia la tablet.
+ *              - En escritorio: dispara el overlay HTML antes de finalizar la intro
+ *                y reproyecta su posición en cada frame para mantenerlo alineado.
+ *              - En móvil: ejecuta un segundo zoom corto (`animateSecondZoom`) antes de mostrar
+ *                el overlay y el contenido.
+ *              - Renderiza la escena en cada iteración.
+ *              - Realiza un ajuste final de la posición del overlay al finalizar la animación.
+ *              - Solicita nuevos frames hasta completar la intro y, en caso de móvil,
+ *                también el segundo zoom.
  *
  * NOTAS:
  *   - `overlayShown` evita múltiples actualizaciones del overlay.
- *   - `recorteTiempoParaMostrarLaPantalla` es un recorte de tiempo para adelantar el contenido ligeramente.
+ *   - `recorteTiempoParaMostrarLaPantalla` adelanta la aparición del contenido.
+ *   - En escritorio, ahora `updateOverlayPosition()` se invoca en cada frame para prevenir
+ *     desalineaciones al cambiar de pestaña o si se pausa la animación.
  *****************************************************************************************/
 function startAnimation(time: DOMHighResTimeStamp): void {
   if (startTime === null) startTime = time
@@ -862,12 +889,11 @@ function startAnimation(time: DOMHighResTimeStamp): void {
   // 2) Disparo de overlay y segundo zoom (solo mobile)
   if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
     if (!isMobile) {
+      // proyección inicial y muestra del contenido en desktop
       updateOverlayPosition()
       showTabletContent.value = true
       overlayShown = true
-    }
-
-    if (isMobile && !secondZoomTriggered) {
+    } else if (!secondZoomTriggered) {
       const p = getScreenWorldPos()
       endPos2 = new THREE.Vector3(p.x, p.y, p.z + mobileSecondZoomMargin)
       secondZoomStartedAt = elapsedTime
@@ -875,19 +901,24 @@ function startAnimation(time: DOMHighResTimeStamp): void {
     }
   }
 
-  // 3) Segundo zoom (si está activo)
+  // 3) Segundo zoom (si está activo - mobile)
   if (isMobile && secondZoomTriggered && endPos2) {
     animateSecondZoom(elapsedTime)
   }
 
-  // 4) Render SIEMPRE al final, después de mover cámara/rotar
+  // 4) Render SIEMPRE al final
   if (!renderer || !scene || !camera) {
     animationId = requestAnimationFrame(startAnimation)
     return
   }
   renderer.render(scene, camera)
 
-  // 5) ÚNICA condición para continuar el loop
+  // ➜ Reproyecta el overlay en cada frame (desktop)
+  if (!isMobile && overlayShown) {
+    updateOverlayPosition()
+  }
+
+  // 5) Condición de loop
   const stillInIntro = elapsedTime < totalDuration
   const inSecondZoom =
     isMobile &&
@@ -896,7 +927,13 @@ function startAnimation(time: DOMHighResTimeStamp): void {
     elapsedTime - secondZoomStartedAt < mobileSecondZoomDuration
 
   if (stillInIntro || inSecondZoom) {
-    requestAnimationFrame(startAnimation)
+    animationId = requestAnimationFrame(startAnimation)
+  } else {
+    // Animación terminó: última proyección de seguridad (desktop)
+    if (!isMobile) {
+      updateOverlayPosition()
+      setTimeout(updateOverlayPosition, 0)
+    }
   }
 }
 

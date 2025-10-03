@@ -1,7 +1,7 @@
+// src/stores/useSkills.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchSkills, type SkillDTO } from '@/services/skills'
-import { fetchCategoryOrder } from '@/services/categories'
+import { fetchSkills, preloadImage, type SkillDTO } from '@/services/skills'
 
 type SkillVM = { name: string; logo: string | null; categories: string[] }
 
@@ -13,20 +13,17 @@ function resolveLogo(raw: string | null) {
   return raw
 }
 
-const TTL_MS = 10 * 60 * 1000 // 10 minutos
+const TTL_MS = 10 * 60 * 1000 // 10 min
 
 export const useSkillsStore = defineStore('skills', () => {
   const apiSkills = ref<SkillDTO[] | null>(null)
-  const orderedCategories = ref<string[] | null>(null)
   const fetchedAt = ref<number | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const isFresh = computed(() => {
-    if (!fetchedAt.value) return false
-    return Date.now() - fetchedAt.value < TTL_MS
-  })
+  const isFresh = computed(() => !!fetchedAt.value && Date.now() - (fetchedAt.value ?? 0) < TTL_MS)
 
+  // ViewModel listo para el componente
   const skills = computed<SkillVM[]>(() =>
     (apiSkills.value ?? []).map((s) => ({
       name: s.name,
@@ -35,49 +32,28 @@ export const useSkillsStore = defineStore('skills', () => {
     })),
   )
 
-  const uniqueCategories = computed<string[]>(() => {
-    const count = new Map<string, number>()
-    const firstIdx = new Map<string, number>()
-    skills.value.forEach((s, i) => {
-      new Set(s.categories).forEach((c) => {
-        if (!firstIdx.has(c)) firstIdx.set(c, i)
-        count.set(c, (count.get(c) ?? 0) + 1)
-      })
-    })
-    const cats = Array.from(count.keys())
-    cats.sort((a, b) => {
-      const diff = (count.get(b) ?? 0) - (count.get(a) ?? 0)
-      if (diff !== 0) return diff
-      return (firstIdx.get(a) ?? 0) - (firstIdx.get(b) ?? 0)
-    })
-    return cats
-  })
-
-  const displayCategories = computed<string[]>(() =>
-    orderedCategories.value && orderedCategories.value.length
-      ? orderedCategories.value
-      : uniqueCategories.value,
-  )
-
+  // Agrupaciones y helpers usados por tu UI
   const groupedByCategory = computed<Record<string, SkillVM[]>>(() => {
     const groups: Record<string, SkillVM[]> = {}
-    for (const s of skills.value) for (const c of s.categories) (groups[c] ??= []).push(s)
+    for (const s of skills.value) {
+      for (const c of s.categories) (groups[c] ??= []).push(s)
+    }
     return groups
   })
+
+  const uniqueCategories = computed<string[]>(() => Object.keys(groupedByCategory.value))
+  const displayCategories = computed<string[]>(() => uniqueCategories.value)
 
   function byCategory(cat: string) {
     return groupedByCategory.value[cat] ?? []
   }
 
-  async function load(options?: { force?: boolean }) {
-    if (!options?.force && isFresh.value && apiSkills.value && orderedCategories.value) return
+  async function load(opts?: { force?: boolean }) {
+    if (!opts?.force && isFresh.value && apiSkills.value) return
     loading.value = true
     error.value = null
     try {
-      // Haz ambas peticiones en paralelo
-      const [skillsRes, catsRes] = await Promise.all([fetchSkills(), fetchCategoryOrder()])
-      apiSkills.value = skillsRes
-      orderedCategories.value = catsRes
+      apiSkills.value = await fetchSkills()
       fetchedAt.value = Date.now()
     } catch (e: any) {
       error.value = e?.message ?? 'Error cargando skills'
@@ -87,21 +63,30 @@ export const useSkillsStore = defineStore('skills', () => {
     }
   }
 
+  // Precarga de logos para evitar parpadeos al entrar en Skills
+  async function preloadAssets() {
+    await load()
+    const urls = skills.value.map((s) => s.logo || '').filter(Boolean) as string[]
+    await Promise.all(urls.map(preloadImage))
+  }
+
   return {
     // state
     apiSkills,
-    orderedCategories,
     fetchedAt,
     loading,
     error,
+
     // getters
     skills,
+    groupedByCategory,
     uniqueCategories,
     displayCategories,
-    groupedByCategory,
     byCategory,
     isFresh,
+
     // actions
     load,
+    preloadAssets,
   }
 })

@@ -41,7 +41,6 @@ export const useRedirectStore = defineStore('redirect', {
           this.current = 'Contact'
           break
         case 'ContactEmail':
-          console.log('ContactEmail2')
           this.current = 'ContactEmail'
           break
         default:

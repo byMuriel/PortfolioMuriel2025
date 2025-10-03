@@ -31,6 +31,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { fetchBlogPosts, type BlogPostDTO } from '@/services/blog'
 import SinglePost from './SinglePost.vue'
 
 interface Item {
@@ -41,7 +42,7 @@ interface Item {
   date: string
 }
 const MAX_CHARS: number = 250
-const datos = ref<Item[]>([])
+const datos = ref<BlogPostDTO[]>([])
 const selectedPost = ref<Item | null>(null)
 const openPost = (item: Item) => {
   selectedPost.value = item
@@ -49,23 +50,16 @@ const openPost = (item: Item) => {
 const closePost = () => {
   selectedPost.value = null
 }
-
 function truncate(text: string, max = MAX_CHARS) {
   if (!text) return ''
   return text.length <= max ? text : text.slice(0, max).replace(/\s+\S*$/, '') + '…'
 }
-/**************************************************************
- * Method: listar().
- * Parameters: None.
- * Description: Function that makes a call to /api/read to read
- *              the stored data.
- * Date: 05.07.2025
- * Author: Muriel Vitale
- ***************************************************************/
 async function listar(): Promise<void> {
-  const res = await fetch('http://localhost/Portafolio2025_Services/api.php/api/read')
-  const json: Item[] = await res.json()
-  datos.value = json
+  try {
+    datos.value = await fetchBlogPosts()
+  } catch (e) {
+    console.error('Error cargando posts:', e)
+  }
 }
 
 onMounted(listar)

@@ -3,7 +3,19 @@
   <div class="container-fluid aboutApplication aboutShadow m-0 p-0">
     <!-- Tools Buttons -->
     <div class="tools">
-      <img class="logoPrinc" src="@/assets/images/AboutMe/logos/logoPrinc.png" alt="" />
+      <!-- <img v-if="imgs.logoPrinc" class="logoPrinc" :src="imgs.logoPrinc" alt="" /> -->
+      <img
+        v-if="logoAbout"
+        :src="logoAbout"
+        alt="About logo"
+        width="96"
+        height="96"
+        decoding="async"
+        loading="eager"
+        @error="onImgError"
+        class="logoPrinc"
+      />
+
       <span
         @click="go('Init')"
         class="toolButton iconContainer d-flex justify-content-center align-items-center"
@@ -44,8 +56,8 @@
     <div class="containerAbout pb-3">
       <!-- Head (Presentation) -->
       <div class="aboutHead">
-        <img class="fondoAbout" src="/src/assets/images/AboutMe/fondo.jpg" alt="" />
-        <img class="murielImg" src="/src/assets/images/AboutMe/muriel.png" alt="" />
+        <img class="fondoAbout" :src="imgs.fondo" alt="" />
+        <img class="murielImg" :src="imgs.avatar" alt="" />
         <h1 class="name m-0 p-0">
           {{ AboutContent.intro }}
           <!-- <span class="font07rem">(She/Her)</span> -->
@@ -64,11 +76,14 @@
             {{ AboutContent.Ubication }}
           </p>
         </div>
+
         <div class="tags m-0 p-0">
-          <p class="text-dark m-0 ps-3 pe-3">
-            {{ AboutContent.Position }}
-            <span v-for="(skill, index) in AboutContent.Skills">{{ skill }}</span>
-          </p>
+          <div class="position ps-3 me-1 text-dark">{{ AboutContent.Position }}</div>
+          <div class="skills-inline d-flex justify-content-start flex-wrap ps-3 pe-3">
+            <span v-for="(skill, i) in AboutContent.Skills" :key="i" class="skill">{{
+              skill
+            }}</span>
+          </div>
         </div>
       </div>
       <!-- Content Cards (About me) -->
@@ -97,227 +112,89 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref, computed, onMounted, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, onMounted, watch, type Ref, type ComputedRef } from 'vue'
+import { useAppLogosStore } from '@/stores/useAppLogos'
 import { useRedirectStore } from '@/stores/useRedirect'
+import { useAboutStore } from '@/stores/useAbout'
+import { useContactChannelsStore } from '@/stores/useContactChannels'
 import PillButton from '@/components/CommonComponents/PillButton.vue'
-import LinkLinkedIn from '@/data/contact.json'
 
-interface AboutContentShape {
+const appLogos = useAppLogosStore()
+const redirectStore = useRedirectStore()
+const store = useAboutStore()
+const contactChannels = useContactChannelsStore()
+
+const logoAbout = computed(() => appLogos.getLogo('about'))
+const screen = ref<HTMLDivElement | null>(null)
+const more = ref(false)
+const expanded = ref<boolean[]>([])
+
+onMounted(() => {
+  if (!store.isFresh) void store.load()
+  if (!contactChannels.isFresh) void contactChannels.load()
+})
+
+const AboutContent: ComputedRef<{
+  logo: string
+  img: string
+  fondo: string
   intro: string
   Experience: string
   Ubication: string
   Position: string
   Skills: string[]
-  AboutMeTitles?: MaybeList
-  AboutMe?: MaybeList
-}
-type StringDict = Record<string, string>
-type MaybeList = string[] | StringDict | undefined
-// type ViewKey = 'Skills' | 'Experience' | 'Projects' | 'Contact' | 'Blog'
-
-const data = inject<Ref<{ about: AboutContentShape }>>('data')
-if (!data) {
-  throw new Error('No se proporcionó "data" via provide().')
-}
-const screen = ref<HTMLDivElement | null>(null)
-const more = ref<boolean>(false)
-const expanded = ref<boolean[]>([])
-const redirectStore = useRedirectStore()
-
-/*****************************************************************************************
- * CONSTANT: aboutData
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed reference that extracts the `about` section from raw data.
- * ***************************************************************************************
- * CONSTANTE: aboutData
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Referencia computada que extrae la sección `about` de los datos crudos.
- *****************************************************************************************/
-const aboutData = computed(() => data.value.about)
-/*****************************************************************************************
- * CONSTANT: AboutContent
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed reference that provides typed access to the About component's data.
- *              - Casts the raw `aboutData` to the `AboutContentShape` interface.
- *              - Ensures strong typing for template binding and code completion.
- * ***************************************************************************************
- * CONSTANTE: AboutContent
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Referencia computada que provee acceso tipado a los datos del componente About.
- *              - Convierte el `aboutData` crudo a la interfaz `AboutContentShape`.
- *              - Garantiza tipado estricto para el uso en el template y autocompletado.
- *****************************************************************************************/
-const AboutContent: ComputedRef<AboutContentShape> = computed(
-  () => aboutData.value as AboutContentShape,
+  AboutMeTitles: string[]
+  AboutMe: string[]
+}> = computed(
+  () =>
+    store.about ?? {
+      logo: '',
+      img: '',
+      fondo: '',
+      intro: '',
+      Experience: '',
+      Ubication: '',
+      Position: '',
+      Skills: [],
+      AboutMeTitles: [],
+      AboutMe: [],
+    },
 )
-/*****************************************************************************************
- * CONSTANT: linkLinkedIn
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed reference that resolves the LinkedIn profile URL.
- *              - Extracts the `link` field from `LinkLinkedIn.linkedIn`.
- *              - Provides a strongly typed string for safe use in the template.
- * ***************************************************************************************
- * CONSTANTE: linkLinkedIn
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Referencia computada que resuelve la URL del perfil de LinkedIn.
- *              - Extrae el campo `link` de `LinkLinkedIn.linkedIn`.
- *              - Provee un string tipado para uso seguro en el template.
- *****************************************************************************************/
-const linkLinkedIn: ComputedRef<string> = computed(() => LinkLinkedIn.linkedIn.link)
-/*****************************************************************************************
- * FUNCTION: toArray
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Utility function that normalizes values into an array of strings.
- *              - Returns an empty array if value is falsy.
- *              - Converts objects into their value arrays.
- * ***************************************************************************************
- * FUNCIÓN: toArray
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Función utilitaria que normaliza valores en un arreglo de strings.
- *              - Retorna un arreglo vacío si el valor es falsy.
- *              - Convierte objetos en sus valores.
- *****************************************************************************************/
-const toArray = (v: MaybeList): string[] => {
-  if (!v) return []
-  return Array.isArray(v) ? v : Object.values(v)
+const imgs = computed(() => ({
+  logoPrinc: store.about?.logo ?? '',
+  fondo: store.about?.fondo ?? '',
+  avatar: store.about?.img ?? '',
+}))
+const titles = computed<string[]>(() => store.about?.AboutMeTitles ?? [])
+const paragraphs = computed<string[]>(() => store.about?.AboutMe ?? [])
+const linkLinkedIn = computed(() => contactChannels.getLinkByCode('linkedin'))
+
+watch(
+  titles,
+  (arr) => {
+    const safe = Array.isArray(arr) ? arr : []
+    expanded.value = safe.map((_, i) => i === 0)
+  },
+  { immediate: true },
+)
+function onImgError(e: Event) {
+  const el = e.target as HTMLImageElement
+  el.onerror = null
+  el.src = '/fallbacks/app-default.png'
 }
-/*****************************************************************************************
- * CONSTANT: titles
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed reference that exposes the "AboutMeTitles" field as a string array.
- *              - Converts the raw data into an array using the `toArray` utility.
- * ***************************************************************************************
- * CONSTANTE: titles
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMeTitles" como un arreglo de strings.
- *              - Convierte los datos crudos en un arreglo utilizando el helper `toArray`.
- *****************************************************************************************/
-const titles: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMeTitles))
-/*****************************************************************************************
- * CONSTANT: paragraphs
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Computed reference that exposes the "AboutMe" field as a string array.
- *              - Normalizes the raw content into an array with the `toArray` utility.
- * ***************************************************************************************
- * CONSTANTE: paragraphs
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Referencia computada que expone el campo "AboutMe" como un arreglo de strings.
- *              - Normaliza el contenido crudo en un arreglo con el helper `toArray`.
- *****************************************************************************************/
-const paragraphs: ComputedRef<string[]> = computed(() => toArray(AboutContent.value.AboutMe))
-/*****************************************************************************************
- * FUNCTION: go
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles navigation from the About component to another screen.
- * ***************************************************************************************
- * FUNCIÓN: go
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Gestiona la navegación desde el componente About hacia otra pantalla.
- *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
-/*****************************************************************************************
- * FUNCTION: setMore
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Sets the "more" flag to show or hide extra content.
- * ***************************************************************************************
- * FUNCIÓN: setMore
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Ajusta la bandera "more" para mostrar u ocultar contenido extra.
- *****************************************************************************************/
-function setMore(value: boolean): void {
-  more.value = !!value
+function showSection(i: number) {
+  if (i >= 0 && i < expanded.value.length) expanded.value[i] = true
 }
-/*****************************************************************************************
- * FUNCTION: showSection
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Expands a specific section by index.
- * ***************************************************************************************
- * FUNCIÓN: showSection
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Expande una sección específica por índice.
- *****************************************************************************************/
-function showSection(i: number): void {
-  if (i < 0 || i >= expanded.value.length) return
-  expanded.value[i] = true
+function hideSection(i: number) {
+  if (i >= 0 && i < expanded.value.length) expanded.value[i] = false
 }
-/*****************************************************************************************
- * FUNCTION: hideSection
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Collapses a specific section by index.
- * ***************************************************************************************
- * FUNCIÓN: hideSection
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Colapsa una sección específica por índice.
- *****************************************************************************************/
-function hideSection(i: number): void {
-  if (i < 0 || i >= expanded.value.length) return
-  expanded.value[i] = false
-}
-/*****************************************************************************************
- * FUNCTION: toggleSection
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Toggles a specific section by index.
- * ***************************************************************************************
- * FUNCIÓN: toggleSection
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Alterna (abre/cierra) una sección por índice.
- *****************************************************************************************/
-function toggleSection(i: number): void {
-  if (i < 0 || i >= expanded.value.length) return
-  expanded.value[i] = !expanded.value[i]
-}
-/*****************************************************************************************
- * VARIABLE: domReady
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Promise that resolves once the component is mounted (DOM ready).
- *              - Useful to sync external logic (e.g., Three.js overlays) after mount.
- * ***************************************************************************************
- * VARIABLE: domReady
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Promesa que se resuelve cuando el componente se monta (DOM listo).
- *              - Útil para sincronizar lógica externa (p. ej., overlays de Three.js) tras el mount.
- *****************************************************************************************/
 const domReady: Promise<void> = new Promise<void>((resolve) => {
-  onMounted(() => resolve())
+  onMounted(resolve)
 })
-/*****************************************************************************************
- * LIFECYCLE HOOK: onMounted
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Initializes the accordion state right after the component is mounted.
- *              - Builds a boolean array with the same length as `titles`, all set to false.
- *              - Opens the first section by setting index 0 to true when available.
- * ***************************************************************************************
- * HOOK DE CICLO DE VIDA: onMounted
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Inicializa el estado del acordeón justo después de montar el componente.
- *              - Crea un arreglo de booleanos con la longitud de `titles`, todos en false.
- *              - Abre la primera sección poniendo el índice 0 en true si existe.
- *****************************************************************************************/
-onMounted(() => {
-  expanded.value = titles.value.map((_, i) => i === 0)
-})
-/*****************************************************************************************
- * FUNCTION CALL: defineExpose
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Exposes internal reactive references to the parent component.
- *              - `screen`: HTMLDivElement ref used as the tablet screen container.
- *              - `domReady`: Promise resolved when the component is mounted.
- * ***************************************************************************************
- * LLAMADA DE FUNCIÓN: defineExpose
- * AUTOR: Muriel Vitale.
- * DESCRIPCIÓN: Expone referencias reactivas internas al componente padre.
- *              - `screen`: referencia a HTMLDivElement usada como contenedor de la pantalla.
- *              - `domReady`: Promesa que se resuelve al montar el componente.
- *****************************************************************************************/
-defineExpose<{
-  screen: Ref<HTMLDivElement | null>
-  domReady: Promise<void>
-}>({
-  screen,
-  domReady,
-})
+defineExpose<{ screen: Ref<HTMLDivElement | null>; domReady: Promise<void> }>({ screen, domReady })
 </script>
 
 <style scoped>
@@ -380,6 +257,9 @@ defineExpose<{
 }
 .logoPrinc {
   width: 15%;
+  height: auto; /* mantiene la relación de aspecto */
+  object-fit: contain; /* opcional, útil si luego usas max-width/height */
+  display: block;
 }
 .textIcon {
   margin: 0;
@@ -389,6 +269,7 @@ defineExpose<{
   color: grey;
 }
 .containerAbout {
+  width: 100%;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -483,5 +364,19 @@ defineExpose<{
   font-size: 1rem;
   color: rgba(39, 39, 39, 0.86);
   font-family: Arial, sans-serif;
+}
+/* Opcional: un poco de aire y buen wrap */
+.text-dark .skills-line {
+  margin-left: 0.25rem;
+  white-space: normal;
+}
+.skill {
+  font-size: 0.8rem;
+  color: rgb(133, 131, 131);
+}
+
+.skills-inline .skill + .skill::before {
+  content: ' / ';
+  margin: 0 0.25rem;
 }
 </style>

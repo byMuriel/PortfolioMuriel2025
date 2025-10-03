@@ -4,7 +4,13 @@
     <!-- Tools Buttons -->
     <div class="tools">
       <div class="m-0 p-0 logo">
-        <img class="logoPrinc" src="@/assets/images/SkillsLogos/LogoM.png" alt="" />
+        <img
+          v-if="logoSkills"
+          :src="logoSkills"
+          alt="Skills logo"
+          class="logoPrinc"
+          @error="onImgError"
+        />
         <span class="m-o p-0 title">Skills</span>
       </div>
 
@@ -45,11 +51,13 @@
 <script setup lang="ts">
 defineOptions({ name: 'Skills' })
 import { computed, onMounted } from 'vue'
+import { useAppLogosStore } from '@/stores/useAppLogos'
 import { useSkillsStore } from '@/stores/useSkills'
 import { useRedirectStore } from '@/stores/useRedirect'
 
 const FALLBACK_LOGO = '/assets/SkillsLogos/LogoM.png'
 
+const appLogos = useAppLogosStore()
 const redirectStore = useRedirectStore()
 const store = useSkillsStore()
 
@@ -61,9 +69,15 @@ onMounted(() => {
   }
 })
 
+const logoSkills = computed(() => appLogos.getLogo('skills'))
 const displayCategories = computed(() => store.displayCategories)
 const byCategory = (cat: string) => store.byCategory(cat)
 
+function onImgError(e: Event) {
+  const el = e.target as HTMLImageElement
+  el.onerror = null
+  el.src = '/fallbacks/app-default.png'
+}
 function go(to: string) {
   useRedirectStore().redirect(to)
 }
