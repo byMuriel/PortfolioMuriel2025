@@ -108,66 +108,6 @@ const mobileSecondZoomMargin = 0.6 // qué tan cerca de la pantalla
 const data = ref({})
 
 /*****************************************************************************************
- * LIFECYCLE HOOK: onMounted
- * AUTHOR: Muriel Vitale
- * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
- *              Performs the following tasks:
- *              1. Loads multiple JSON data files in parallel (about, contact, experience,
- *                 projects, skills) using dynamic imports.
- *              2. Populates the reactive `data` object with the loaded JSON content.
- *              3. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
- *              4. Hides the loading indicators by:
- *                 - Setting `isLoading` to false.
- *                 - Setting `showPreloader` to false.
- *
- * DESCRIPCIÓN: Hook del ciclo de vida de Vue que se ejecuta cuando el componente se monta.
- *              Realiza las siguientes tareas:
- *              1. Carga múltiples archivos JSON en paralelo (about, contact, experience,
- *                 projects, skills) usando imports dinámicos.
- *              2. Llena el objeto reactivo `data` con el contenido de los JSON.
- *              3. Espera al evento `load` de la ventana para asegurar que todos los recursos
- *                 (incluyendo imágenes) estén completamente cargados.
- *              4. Oculta los indicadores de carga al:
- *                 - Establecer `isLoading` en falso.
- *                 - Establecer `showPreloader` en falso.
- *****************************************************************************************/
-onMounted(async () => {
-  await new Promise<void>((resolve) => {
-    if (document.readyState === 'complete') {
-      resolve()
-    } else {
-      window.addEventListener('load', () => resolve(), { once: true })
-    }
-  })
-
-  isLoading.value = false
-  showPreloader.value = false
-})
-/*****************************************************************************************
- * LIFECYCLE HOOK: onBeforeUnmount
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Vue lifecycle hook that runs just before the component is destroyed.
- *              Cleans up rendering-related resources to avoid memory leaks:
- *              - Cancels the animation loop with `cancelAnimationFrame`.
- *              - Disposes of the WebGL renderer with `renderer.dispose()`.
- *              - Removes the renderer's canvas from the DOM if it was appended.
- * ***************************************************************************************
- * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
- *              sea destruido. Libera los recursos relacionados con el renderizado para evitar
- *              fugas de memoria:
- *              - Cancela el bucle de animación con `cancelAnimationFrame`.
- *              - Libera los recursos del renderizador con `renderer.dispose()`.
- *              - Elimina el canvas WebGL del DOM si fue añadido.
- *****************************************************************************************/
-onBeforeUnmount((): void => {
-  if (animationId !== undefined) cancelAnimationFrame(animationId)
-  renderer?.dispose()
-  const el = container.value
-  if (el && renderer?.domElement && renderer.domElement.parentElement === el) {
-    el.removeChild(renderer.domElement)
-  }
-})
-/*****************************************************************************************
  * FUNCTION: getScreenWorldPos
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Returns the world-space position of the center of the tablet's screen mesh.
@@ -936,6 +876,67 @@ function startAnimation(time: DOMHighResTimeStamp): void {
     }
   }
 }
+
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onMounted
+ * AUTHOR: Muriel Vitale
+ * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
+ *              Performs the following tasks:
+ *              1. Loads multiple JSON data files in parallel (about, contact, experience,
+ *                 projects, skills) using dynamic imports.
+ *              2. Populates the reactive `data` object with the loaded JSON content.
+ *              3. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
+ *              4. Hides the loading indicators by:
+ *                 - Setting `isLoading` to false.
+ *                 - Setting `showPreloader` to false.
+ *
+ * DESCRIPCIÓN: Hook del ciclo de vida de Vue que se ejecuta cuando el componente se monta.
+ *              Realiza las siguientes tareas:
+ *              1. Carga múltiples archivos JSON en paralelo (about, contact, experience,
+ *                 projects, skills) usando imports dinámicos.
+ *              2. Llena el objeto reactivo `data` con el contenido de los JSON.
+ *              3. Espera al evento `load` de la ventana para asegurar que todos los recursos
+ *                 (incluyendo imágenes) estén completamente cargados.
+ *              4. Oculta los indicadores de carga al:
+ *                 - Establecer `isLoading` en falso.
+ *                 - Establecer `showPreloader` en falso.
+ *****************************************************************************************/
+onMounted(async () => {
+  await new Promise<void>((resolve) => {
+    if (document.readyState === 'complete') {
+      resolve()
+    } else {
+      window.addEventListener('load', () => resolve(), { once: true })
+    }
+  })
+
+  isLoading.value = false
+  showPreloader.value = false
+})
+/*****************************************************************************************
+ * LIFECYCLE HOOK: onBeforeUnmount
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Vue lifecycle hook that runs just before the component is destroyed.
+ *              Cleans up rendering-related resources to avoid memory leaks:
+ *              - Cancels the animation loop with `cancelAnimationFrame`.
+ *              - Disposes of the WebGL renderer with `renderer.dispose()`.
+ *              - Removes the renderer's canvas from the DOM if it was appended.
+ * ***************************************************************************************
+ * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
+ *              sea destruido. Libera los recursos relacionados con el renderizado para evitar
+ *              fugas de memoria:
+ *              - Cancela el bucle de animación con `cancelAnimationFrame`.
+ *              - Libera los recursos del renderizador con `renderer.dispose()`.
+ *              - Elimina el canvas WebGL del DOM si fue añadido.
+ *****************************************************************************************/
+onBeforeUnmount((): void => {
+  if (animationId !== undefined) cancelAnimationFrame(animationId)
+  renderer?.dispose()
+  const el = container.value
+  if (el && renderer?.domElement && renderer.domElement.parentElement === el) {
+    el.removeChild(renderer.domElement)
+  }
+})
 
 provide('data', data)
 </script>

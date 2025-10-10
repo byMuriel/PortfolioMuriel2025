@@ -11,7 +11,6 @@
         loading="eager"
         @error="onImgError"
       />
-
       <div class="tools">
         <span
           @click="go('Init')"
@@ -200,20 +199,15 @@ interface Project {
 const currentProjectContainer = ref<HTMLDivElement | null>(null)
 const techContainer = ref<HTMLDivElement | null>(null)
 const screen = ref<HTMLElement | null>(null)
-
-// Store Instances
 const appLogos = useAppLogosStore()
 const projectsStore = useProjectsStore()
 const stateLikeDislikeStore = useStateLikeDislikeProjects()
 const redirectStore = useRedirectStore()
 let intervalId: ReturnType<typeof setInterval> | null = null
-
-// StateFlags
 const showTechInfo: Ref<boolean> = ref(false)
 const currentProjectIndex: Ref<number> = ref(0)
 const currentImageIndex: Ref<number> = ref(0)
 const AUTO_SLIDE_MS: number = 4000
-
 const logoProjects = computed(() => appLogos.getLogo('projects'))
 const rawProjects = computed<Record<string, Project>>(
   () => (projectsStore.byId as unknown as Record<string, Project>) ?? {},
@@ -250,11 +244,31 @@ const techList = computed(() => {
 })
 const projects: ComputedRef<ProjectDTO[]> = computed(() => projectsStore.projects)
 
+/*****************************************************************************************
+ * FUNCTION: onImgError
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles image load failures by swapping the source for a fallback image.
+ *              - Removes the error handler to avoid infinite loops.
+ *              - Uses '/fallbacks/app-default.png' as the placeholder.
+ *
+ * DESCRIPCIÓN: Maneja fallos de carga de imágenes reemplazando la fuente por una imagen de respaldo.
+ *              - Elimina el handler de error para evitar bucles infinitos.
+ *              - Usa '/fallbacks/app-default.png' como placeholder.
+ *****************************************************************************************/
 function onImgError(e: Event) {
   const el = e.target as HTMLImageElement
   el.onerror = null
   el.src = '/fallbacks/app-default.png'
 }
+/*****************************************************************************************
+ * FUNCTION: toogleTech
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Toggles the technical details panel and moves focus to it when opened.
+ *              - Scrolls the container into view centered and focuses it for accessibility.
+ *
+ * DESCRIPCIÓN: Alterna el panel de detalles técnicos y mueve el foco al abrirse.
+ *              - Desplaza el contenedor al centro y le da foco para accesibilidad.
+ *****************************************************************************************/
 function toogleTech() {
   showTechInfo.value = !showTechInfo.value
   if (showTechInfo.value === true && techContainer.value != null) {
@@ -262,9 +276,27 @@ function toogleTech() {
     techContainer.value.focus()
   }
 }
+/*****************************************************************************************
+ * FUNCTION: getColor
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the background color associated with a technology name.
+ *              - Falls back to 'grey' if the tech is not mapped.
+ *
+ * DESCRIPCIÓN: Devuelve el color de fondo asociado a una tecnología.
+ *              - Usa 'grey' si la tecnología no está mapeada.
+ *****************************************************************************************/
 function getColor(name: string): string {
   return (colorSkill as Record<string, string>)[name] || 'grey'
 }
+/*****************************************************************************************
+ * FUNCTION: getColorText
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the ideal text color for contrast over a tech badge.
+ *              - Special case: 'JavaScript' → 'black'; otherwise 'white'.
+ *
+ * DESCRIPCIÓN: Devuelve el color de texto ideal para contraste en la insignia.
+ *              - Caso especial: 'JavaScript' → 'black'; de lo contrario 'white'.
+ *****************************************************************************************/
 function getColorText(name: string): string {
   if (name === 'JavaScript') {
     return 'black'
@@ -272,6 +304,15 @@ function getColorText(name: string): string {
     return 'white'
   }
 }
+/*****************************************************************************************
+ * FUNCTION: scrollToTop
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls the current project container to the top.
+ *              - Uses smooth behavior when supported and requested.
+ *
+ * DESCRIPCIÓN: Desplaza el contenedor del proyecto actual hasta arriba.
+ *              - Usa desplazamiento suave cuando se soporta y se solicita.
+ *****************************************************************************************/
 function scrollToTop(smooth: boolean = true) {
   const el = currentProjectContainer.value
   if (!el) return
@@ -281,14 +322,39 @@ function scrollToTop(smooth: boolean = true) {
     el.scrollTop = 0
   }
 }
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Delegates navigation to the global redirect store.
+ *
+ * DESCRIPCIÓN: Delegar la navegación al store global de redirección.
+ *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
+/*****************************************************************************************
+ * FUNCTION: firstImageOf
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Extracts the first available image URL from a project (array or map).
+ *              - Returns `undefined` if no images are present.
+ *
+ * DESCRIPCIÓN: Extrae la primera URL de imagen disponible de un proyecto (arreglo o mapa).
+ *              - Devuelve `undefined` si no hay imágenes.
+ *****************************************************************************************/
 function firstImageOf(p: Project): string | undefined {
   const img = p.image
   if (!img) return undefined
   return Array.isArray(img) ? img[0] : Object.values(img)[0]
 }
+/*****************************************************************************************
+ * FUNCTION: replacePrincipal
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Replaces the principal (active) project by index and resets the image slider.
+ *              - Optionally scrolls to top when the change comes from a click.
+ *
+ * DESCRIPCIÓN: Reemplaza el proyecto principal por índice y reinicia el carrusel de imágenes.
+ *              - Opcionalmente hace scroll al inicio cuando viene de un clic.
+ *****************************************************************************************/
 async function replacePrincipal(index: number, fromClick: boolean = true): Promise<void> {
   if (index < 0 || index >= projects.value.length) return
   currentImageIndex.value = 0
@@ -296,32 +362,87 @@ async function replacePrincipal(index: number, fromClick: boolean = true): Promi
   await nextTick()
   if (fromClick) scrollToTop(true)
 }
+/*****************************************************************************************
+ * FUNCTION: nextImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Advances the gallery to the next image (wrap-around).
+ *
+ * DESCRIPCIÓN: Avanza la galería a la siguiente imagen (con retorno al inicio).
+ *****************************************************************************************/
 function nextImage(): void {
   const total = images.value.length
   if (!total) return
   currentImageIndex.value = (currentImageIndex.value + 1) % total
 }
+/*****************************************************************************************
+ * FUNCTION: startAutoSlide
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Starts the automatic slideshow if not already running.
+ *
+ * DESCRIPCIÓN: Inicia el pase de diapositivas automático si no está en ejecución.
+ *****************************************************************************************/
 function startAutoSlide(): void {
   if (intervalId) return
   intervalId = setInterval(nextImage, AUTO_SLIDE_MS)
 }
+/*****************************************************************************************
+ * FUNCTION: stopAutoSlide
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Stops the automatic slideshow if running and clears the timer.
+ *
+ * DESCRIPCIÓN: Detiene el pase de diapositivas automático y limpia el temporizador.
+ *****************************************************************************************/
 function stopAutoSlide(): void {
   if (!intervalId) return
   clearInterval(intervalId)
   intervalId = null
 }
+/*****************************************************************************************
+ * FUNCTION: handleThumbs
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Registers a like/dislike vote for the current project.
+ *              - Persists the vote using `stateLikeDislikeStore`.
+ *
+ * DESCRIPCIÓN: Registra un voto de like/dislike para el proyecto actual.
+ *              - Persiste el voto usando `stateLikeDislikeStore`.
+ *****************************************************************************************/
 function handleThumbs(value: number) {
   const i = currentProjectIndex.value
   stateLikeDislikeStore.setVote(i, value)
 }
+/*****************************************************************************************
+ * FUNCTION: dispatchWarm
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Dispatches a custom event to hint/preload a set of image URLs.
+ *              - Event: 'warm-images' with `detail` as string or string[].
+ *
+ * DESCRIPCIÓN: Lanza un evento personalizado para sugerir/pre-cargar un conjunto de imágenes.
+ *              - Evento: 'warm-images' con `detail` como string o string[].
+ *****************************************************************************************/
 function dispatchWarm(urls: string[] | string) {
   window.dispatchEvent(new CustomEvent('warm-images', { detail: urls }))
 }
+/*****************************************************************************************
+ * FUNCTION: allImagesOf
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns all non-empty image URLs for a given project (array or map).
+ *
+ * DESCRIPCIÓN: Devuelve todas las URLs de imagen no vacías de un proyecto (arreglo o mapa).
+ *****************************************************************************************/
 function allImagesOf(p: Project): string[] {
   const img = p?.image
   if (!img) return []
   return Array.isArray(img) ? img.filter(Boolean) : Object.values(img).filter(Boolean)
 }
+/*****************************************************************************************
+ * FUNCTION: currentAndNextImages
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Returns the current and next image URLs of the active project.
+ *              - Useful for warming up/preloading images.
+ *
+ * DESCRIPCIÓN: Devuelve las URLs de la imagen actual y la siguiente del proyecto activo.
+ *              - Útil para warm-up/pre-carga de imágenes.
+ *****************************************************************************************/
 function currentAndNextImages(): string[] {
   const imgs = images.value
   const i = currentImageIndex.value
@@ -329,23 +450,62 @@ function currentAndNextImages(): string[] {
   const next = imgs[(i + 1) % imgs.length]
   return [imgs[i], next].filter(Boolean)
 }
+/*****************************************************************************************
+ * FUNCTION: intentWarmCurrentAndNext
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Emits a warm-up event for the current and next gallery images.
+ *
+ * DESCRIPCIÓN: Emite un evento de warm-up para la imagen actual y la siguiente de la galería.
+ *****************************************************************************************/
 function intentWarmCurrentAndNext() {
   dispatchWarm(currentAndNextImages())
 }
+/*****************************************************************************************
+ * FUNCTION: intentWarmProject
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Emits a warm-up event for all images in the given project.
+ *
+ * DESCRIPCIÓN: Emite un evento de warm-up para todas las imágenes del proyecto dado.
+ *****************************************************************************************/
 function intentWarmProject(p: Project) {
   dispatchWarm(allImagesOf(p))
 }
+/*****************************************************************************************
+ * CONSTANT: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Promise that resolves when the component is mounted (DOM ready).
+ *              - Useful for parent components that need to await readiness.
+ *
+ * DESCRIPCIÓN: Promesa que se resuelve cuando el componente está montado (DOM listo).
+ *              - Útil para componentes padre que necesiten esperar disponibilidad.
+ *****************************************************************************************/
 const domReady: Promise<void> = new Promise((resolve) => {
   onMounted(() => {
     resolve()
   })
 })
 defineExpose({ screen, domReady })
+/*****************************************************************************************
+ * LIFECYCLE: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes auto-slideshow and ensures like/dislike store is set for projects.
+ *
+ * DESCRIPCIÓN: Inicializa el auto-slideshow y asegura la preparación del store de likes/dislikes.
+ *****************************************************************************************/
 onMounted(() => {
   startAutoSlide()
   const keys = Object.keys(rawProjects.value ?? {})
   stateLikeDislikeStore.ensureInit(keys)
 })
+/*****************************************************************************************
+ * LIFECYCLE: onBeforeUnmount
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Cleans up timers/listeners before component destruction.
+ *              - Stops the auto slideshow interval.
+ *
+ * DESCRIPCIÓN: Limpia temporizadores/listeners antes de destruir el componente.
+ *              - Detiene el intervalo del slideshow automático.
+ *****************************************************************************************/
 onBeforeUnmount(() => {
   stopAutoSlide()
 })

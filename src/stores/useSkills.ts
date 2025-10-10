@@ -23,7 +23,6 @@ export const useSkillsStore = defineStore('skills', () => {
 
   const isFresh = computed(() => !!fetchedAt.value && Date.now() - (fetchedAt.value ?? 0) < TTL_MS)
 
-  // ViewModel listo para el componente
   const skills = computed<SkillVM[]>(() =>
     (apiSkills.value ?? []).map((s) => ({
       name: s.name,
@@ -32,7 +31,6 @@ export const useSkillsStore = defineStore('skills', () => {
     })),
   )
 
-  // Agrupaciones y helpers usados por tu UI
   const groupedByCategory = computed<Record<string, SkillVM[]>>(() => {
     const groups: Record<string, SkillVM[]> = {}
     for (const s of skills.value) {
@@ -63,7 +61,6 @@ export const useSkillsStore = defineStore('skills', () => {
     }
   }
 
-  // Precarga de logos para evitar parpadeos al entrar en Skills
   async function preloadAssets() {
     await load()
     const urls = skills.value.map((s) => s.logo || '').filter(Boolean) as string[]

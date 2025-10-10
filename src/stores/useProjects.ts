@@ -12,18 +12,14 @@ export const useProjectsStore = defineStore('projects', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Freshness
   const isFresh = computed(
     () => fetchedAt.value !== null && Date.now() - (fetchedAt.value ?? 0) < TTL_MS,
   )
 
-  // --- Getter declarativo (setup) ---
-  // Mapa por índice: { "0": ProjectDTO, "1": ProjectDTO, ... }
   const byId = computed<Record<string, ProjectDTO>>(() =>
     Object.fromEntries(projects.value.map((p, i) => [String(i), p])),
   )
 
-  // Actions
   async function load(opts?: { force?: boolean; signal?: AbortSignal }) {
     if (!opts?.force && isFresh.value && projects.value.length) return
     loading.value = true

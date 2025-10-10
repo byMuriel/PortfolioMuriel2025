@@ -4,7 +4,7 @@
     <div class="containerExperience">
       <!-- Tools -->
       <div class="tools">
-        <!-- Logo de la app Experience desde app_logos -->
+        <!-- Logo from app_logos -->
         <img
           class="logoPrinc"
           :src="logoExperience"
@@ -30,7 +30,7 @@
         </div>
       </div>
 
-      <!-- Lista de experiencias desde BD -->
+      <!-- List from BD -->
       <div v-for="exp in uiExperiences" :key="exp.id" class="skillCard">
         <div class="container-fluid d-flex justify-content-between align-items-center">
           <!-- Logo empresa -->
@@ -74,39 +74,9 @@ const redirectStore = useRedirectStore()
 const appLogos = useAppLogosStore()
 const experiencesStore = useExperiencesStore()
 const contactChannels = useContactChannelsStore()
-
 const logoExperience = computed(() => appLogos.getLogo('experience'))
 const linkedinUrl = computed(() => contactChannels.getLinkByCode('linkedn'))
-
 const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' })
-function formatRange(startISO: string, endISO: string | null) {
-  const s = safeDate(startISO)
-  const e = endISO ? safeDate(endISO) : null
-  const sTxt = s ? fmt.format(s) : startISO
-  const eTxt = e ? fmt.format(e) : 'Present'
-  return `${sTxt} – ${eTxt}`
-}
-function safeDate(v: string) {
-  const d = new Date(v)
-  return isNaN(d.getTime()) ? null : d
-}
-function ensureUrl(u: string) {
-  if (!u) return ''
-  return /^https?:\/\//i.test(u) ? u : `https://${u}`
-}
-function cleanHost(u: string) {
-  try {
-    return new URL(ensureUrl(u)).host.replace(/^www\./, '')
-  } catch {
-    return u
-  }
-}
-function onImgError(e: Event) {
-  const el = e.target as HTMLImageElement
-  el.onerror = null
-  el.src = '/fallbacks/app-default.png'
-}
-
 const uiExperiences = computed(() =>
   experiencesStore.experiences.map((e) => ({
     id: e.id,
@@ -118,7 +88,97 @@ const uiExperiences = computed(() =>
     dateRange: formatRange(e.start_date, e.end_date),
   })),
 )
-
+/*****************************************************************************************
+ * FUNCTION: formatRange
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Formats a start and end date into a human-readable date range.
+ *              - Converts ISO strings into formatted dates.
+ *              - Displays "Present" when the end date is null.
+ *              - Returns a string in the format "Month Year – Month Year".
+ *
+ * DESCRIPCIÓN: Da formato a una fecha de inicio y fin en un rango legible.
+ *              - Convierte las cadenas ISO en fechas formateadas.
+ *              - Muestra "Present" cuando no existe fecha de finalización.
+ *              - Devuelve una cadena con el formato "Mes Año – Mes Año".
+ *****************************************************************************************/
+function formatRange(startISO: string, endISO: string | null) {
+  const s = safeDate(startISO)
+  const e = endISO ? safeDate(endISO) : null
+  const sTxt = s ? fmt.format(s) : startISO
+  const eTxt = e ? fmt.format(e) : 'Present'
+  return `${sTxt} – ${eTxt}`
+}
+/*****************************************************************************************
+ * FUNCTION: safeDate
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Safely converts a string value into a valid JavaScript Date object.
+ *              - Returns `null` if the input is not a valid date.
+ *
+ * DESCRIPCIÓN: Convierte de forma segura una cadena en un objeto Date válido.
+ *              - Devuelve `null` si el valor de entrada no es una fecha válida.
+ *****************************************************************************************/
+function safeDate(v: string) {
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? null : d
+}
+/*****************************************************************************************
+ * FUNCTION: ensureUrl
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Ensures that a given string is a valid URL with protocol.
+ *              - Adds `https://` if the input lacks an HTTP or HTTPS prefix.
+ *              - Returns an empty string for invalid or empty inputs.
+ *
+ * DESCRIPCIÓN: Garantiza que una cadena sea una URL válida con protocolo.
+ *              - Agrega `https://` si la entrada no tiene prefijo HTTP o HTTPS.
+ *              - Devuelve una cadena vacía si la entrada es inválida o está vacía.
+ *****************************************************************************************/
+function ensureUrl(u: string) {
+  if (!u) return ''
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`
+}
+/*****************************************************************************************
+ * FUNCTION: cleanHost
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Extracts and cleans the host name from a URL string.
+ *              - Removes the `www.` prefix for cleaner display.
+ *              - Returns the original string if the URL is invalid.
+ *
+ * DESCRIPCIÓN: Extrae y limpia el nombre del host de una cadena URL.
+ *              - Elimina el prefijo `www.` para mostrarlo más limpio.
+ *              - Devuelve la cadena original si la URL es inválida.
+ *****************************************************************************************/
+function cleanHost(u: string) {
+  try {
+    return new URL(ensureUrl(u)).host.replace(/^www\./, '')
+  } catch {
+    return u
+  }
+}
+/*****************************************************************************************
+ * FUNCTION: onImgError
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles image load failures by replacing the source with a default fallback.
+ *              - Removes the error handler to prevent infinite retry loops.
+ *              - Uses a generic placeholder image from `/fallbacks/app-default.png`.
+ *
+ * DESCRIPCIÓN: Maneja errores de carga de imágenes reemplazando la fuente con una por defecto.
+ *              - Elimina el manejador de error para evitar bucles infinitos.
+ *              - Usa una imagen genérica ubicada en `/fallbacks/app-default.png`.
+ *****************************************************************************************/
+function onImgError(e: Event) {
+  const el = e.target as HTMLImageElement
+  el.onerror = null
+  el.src = '/fallbacks/app-default.png'
+}
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles navigation to another tablet screen using the redirect store.
+ *              - Redirects only if a valid route key (`to`) is provided.
+ *
+ * DESCRIPCIÓN: Gestiona la navegación hacia otra pantalla de la tablet usando el store de redirección.
+ *              - Redirige solo si se proporciona una clave de ruta (`to`) válida.
+ *****************************************************************************************/
 function go(to: string) {
   if (to) redirectStore.redirect(to)
 }

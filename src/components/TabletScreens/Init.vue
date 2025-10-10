@@ -36,12 +36,9 @@
 import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 
-const router = useRouter()
-
 type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
 type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
-
-// State Flags
+const router = useRouter()
 const currentTime: Ref<string> = ref('')
 const currentDate: Ref<string> = ref('')
 const screen: Ref<HTMLDivElement | null> = ref(null)
@@ -208,7 +205,6 @@ onBeforeUnmount((): void => {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-
   background-image: url('@/assets/textures/wallpaperTablet.png');
   background-size: cover;
   background-position: center;
@@ -217,11 +213,10 @@ onBeforeUnmount((): void => {
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
-  /* box-shadow: inset 0 0 1.5rem rgba(0, 0, 0, 0.8); */
 }
 .clock-container {
   width: 90%;
-  height: 25%;
+  height: 20%;
   background-color: rgba(3, 3, 3, 0.3);
   box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.5);
   border-radius: 1rem;
@@ -263,9 +258,9 @@ onBeforeUnmount((): void => {
   width: 6rem;
 }
 .icon {
-  width: 200px; /* ajusta al tamaño que uses para About, Projects, etc */
+  width: 200px;
   height: 200px;
-  object-fit: contain; /* evita que se deforme */
+  object-fit: contain;
 }
 .app-button {
   background: none;
@@ -298,5 +293,45 @@ onBeforeUnmount((): void => {
 }
 .app-button {
   animation: popIn 0.4s ease forwards;
+}
+.initContent {
+  min-height: 100dvh;
+  justify-content: start;
+}
+
+@media (max-width: 640px) {
+  .clock-container {
+    height: 25%;
+  }
+  .initContent {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+  }
+  .icon-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem;
+    justify-items: center;
+    align-content: center;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 450px;
+  }
+  .tamanioIconoApp {
+    width: 7.5rem;
+  }
+  .app-button {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border-radius: 25px;
+  }
+  .clock-time {
+    font-size: 5rem;
+  }
+  .clock-date {
+    font-size: 1.5rem;
+  }
 }
 </style>

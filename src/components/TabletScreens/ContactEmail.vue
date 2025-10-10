@@ -111,11 +111,8 @@ import { Popover } from 'bootstrap'
 const MIN_LEN: number = 25 // Longitud minima del mensaje permitida
 const MAX_LEN: number = 500 // Longitud maxima del mensaje permitida
 const API_URL = import.meta.env.VITE_MAIL_ENDPOINT as string
-
 const chatContainer = ref<HTMLDivElement | null>(null)
 const draftInput = ref<HTMLTextAreaElement | null>(null)
-
-// StateFlags
 const messageSend1 = ref<boolean>(false)
 const messageSend2 = ref<boolean>(false)
 const sending = ref<boolean>(false)
@@ -123,11 +120,8 @@ const draft = ref<string>('')
 const introTime = ref<string>(formatTime())
 const sendTime = ref<string>('')
 const thanksTime = ref<string>('')
-
-// Store Instances
 const redirectStore = useRedirectStore()
 const store = useContactChannelsStore()
-
 const mail = computed(() => store.byCode['mail'] ?? null)
 const appLogoUrl = computed(() => store.appLogoUrl)
 const mailAddress = computed(() => mail.value?.link ?? '')
@@ -139,12 +133,34 @@ const canSend = computed<boolean>(() => {
   return len >= MIN_LEN && len <= MAX_LEN && !sending.value
 })
 
+/*****************************************************************************************
+ * WATCH: messageSend1
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Observes the first message send event to manage chat scrolling.
+ *              - Waits for the DOM to update (`nextTick`).
+ *              - Automatically scrolls the chat container to the bottom after the message appears.
+ *
+ * DESCRIPCIÓN: Observa el evento del primer mensaje enviado para manejar el desplazamiento del chat.
+ *              - Espera a que el DOM se actualice (`nextTick`).
+ *              - Desplaza automáticamente el contenedor del chat hasta el final después de mostrar el mensaje.
+ *****************************************************************************************/
 watch(messageSend1, async (v) => {
   if (v) {
     await nextTick()
     scrollToBottom()
   }
 })
+/*****************************************************************************************
+ * WATCH: messageSend2
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Observes the second message send event to handle UI updates.
+ *              - Waits for DOM update before scrolling.
+ *              - Scrolls chat to bottom and initializes Bootstrap popovers.
+ *
+ * DESCRIPCIÓN: Observa el evento del segundo mensaje enviado para actualizar la interfaz.
+ *              - Espera la actualización del DOM antes de desplazarse.
+ *              - Desplaza el chat hasta el final e inicializa los popovers de Bootstrap.
+ *****************************************************************************************/
 watch(messageSend2, async (v) => {
   if (v) {
     await nextTick()
@@ -152,9 +168,48 @@ watch(messageSend2, async (v) => {
     initPopovers()
   }
 })
+/*****************************************************************************************
+ * LIFECYCLE: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes contact data and sets up UI elements after mounting.
+ *              - Loads contact store data if not already available.
+ *              - Focuses on the draft input field for immediate typing.
+ *              - Initializes Bootstrap popovers for interactive UI.
+ *
+ * DESCRIPCIÓN: Inicializa los datos de contacto y los elementos de interfaz al montar el componente.
+ *              - Carga los datos del store de contacto si aún no están disponibles.
+ *              - Enfoca el campo de entrada para permitir escribir de inmediato.
+ *              - Inicializa los popovers de Bootstrap para la interfaz interactiva.
+ *****************************************************************************************/
+onMounted(async () => {
+  if (!store.isFresh) void store.load({ appKey: 'contact' })
+  await nextTick()
+  draftInput.value?.focus()
+  initPopovers()
+})
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Redirects to another section of the tablet interface.
+ *              - Uses the global redirect store for navigation.
+ *
+ * DESCRIPCIÓN: Redirige a otra sección de la interfaz de la tablet.
+ *              - Usa el store global de redirección para la navegación.
+ *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
+/*****************************************************************************************
+ * FUNCTION: formatTime
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Formats a JavaScript Date object into a human-readable 12-hour time string.
+ *              - Example output: "4:07 p.m."
+ *              - Pads minutes to always show two digits.
+ *
+ * DESCRIPCIÓN: Da formato a un objeto Date en una cadena legible en formato de 12 horas.
+ *              - Ejemplo de salida: "4:07 p.m."
+ *              - Asegura que los minutos siempre tengan dos dígitos.
+ *****************************************************************************************/
 function formatTime(date: Date = new Date()): string {
   let hours = date.getHours()
   const minutes = date.getMinutes()
@@ -162,9 +217,33 @@ function formatTime(date: Date = new Date()): string {
   hours = hours % 12 || 12
   return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`
 }
+/*****************************************************************************************
+ * FUNCTION: copyToClipboard
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Copies a given text string to the system clipboard.
+ *              - Uses the modern Clipboard API.
+ *              - Catches and logs errors silently if copying fails.
+ *
+ * DESCRIPCIÓN: Copia una cadena de texto al portapapeles del sistema.
+ *              - Utiliza la API moderna del portapapeles.
+ *              - Captura y registra los errores silenciosamente si la copia falla.
+ *****************************************************************************************/
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text).catch(console.error)
 }
+/*****************************************************************************************
+ * FUNCTION: handleCopy
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles the copy-to-clipboard action with user feedback.
+ *              - Copies text to clipboard.
+ *              - Shows a temporary Bootstrap popover as visual confirmation.
+ *              - Automatically hides the popover after 3 seconds.
+ *
+ * DESCRIPCIÓN: Gestiona la acción de copiar al portapapeles con retroalimentación visual.
+ *              - Copia el texto al portapapeles.
+ *              - Muestra un popover temporal de Bootstrap como confirmación.
+ *              - Oculta automáticamente el popover después de 3 segundos.
+ *****************************************************************************************/
 function handleCopy(text: string, event: MouseEvent) {
   copyToClipboard(text)
 
@@ -181,12 +260,38 @@ function handleCopy(text: string, event: MouseEvent) {
   pop.show()
   setTimeout(() => pop.hide(), 3000)
 }
+/*****************************************************************************************
+ * FUNCTION: initPopovers
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Initializes all Bootstrap popovers in the document.
+ *              - Disposes of any existing instances before creating new ones.
+ *              - Ensures consistent behavior for all elements with `data-bs-toggle="popover"`.
+ *
+ * DESCRIPCIÓN: Inicializa todos los popovers de Bootstrap en el documento.
+ *              - Elimina las instancias existentes antes de crear nuevas.
+ *              - Garantiza un comportamiento consistente para todos los elementos con `data-bs-toggle="popover"`.
+ *****************************************************************************************/
 function initPopovers() {
   document.querySelectorAll<HTMLElement>('[data-bs-toggle="popover"]').forEach((el) => {
     Popover.getInstance(el)?.dispose()
     new Popover(el, { trigger: 'click', container: 'body' })
   })
 }
+/*****************************************************************************************
+ * FUNCTION: onSend
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Sends the user’s message through an API endpoint and updates the chat UI.
+ *              - Validates message length before sending.
+ *              - Performs a POST request to the API.
+ *              - Displays the sent message and response times in the chat interface.
+ *              - Handles API and network errors gracefully.
+ *
+ * DESCRIPCIÓN: Envía el mensaje del usuario mediante un endpoint API y actualiza la interfaz del chat.
+ *              - Valida la longitud del mensaje antes de enviarlo.
+ *              - Realiza una solicitud POST al API.
+ *              - Muestra el mensaje enviado y las horas de respuesta en la interfaz.
+ *              - Maneja los errores de red o API de forma controlada.
+ *****************************************************************************************/
 async function onSend(): Promise<boolean> {
   if (sending.value) return false
   const text = draft.value.trim()
@@ -230,17 +335,18 @@ async function onSend(): Promise<boolean> {
     sending.value = false
   }
 }
+/*****************************************************************************************
+ * FUNCTION: scrollToBottom
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Scrolls the chat container to the bottom to keep the latest messages visible.
+ *
+ * DESCRIPCIÓN: Desplaza el contenedor del chat hasta el final para mantener visibles los mensajes más recientes.
+ *****************************************************************************************/
 function scrollToBottom() {
   if (chatContainer.value) {
     chatContainer.value.scrollTop = chatContainer.value.scrollHeight
   }
 }
-onMounted(async () => {
-  if (!store.isFresh) void store.load({ appKey: 'contact' })
-  await nextTick()
-  draftInput.value?.focus()
-  initPopovers()
-})
 </script>
 
 <style scoped lang="scss">

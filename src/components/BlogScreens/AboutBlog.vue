@@ -2,11 +2,24 @@
 <template>
   <section class="aboutBlog">
     <!-- HERO -->
-    <div class="hero card">
+    <div class="hero card presentationCard">
       <div class="hero__imgWrap">
-        <!-- Imagen dinámica desde la BD -->
-        <img class="hero__img" :src="about?.img" alt="About image" />
+        <!-- Siempre montado: alterna con v-show para evitar salto -->
+        <div class="hero__skeleton" v-if="!imgLoaded"></div>
+        <img
+          v-else-if="about?.img"
+          class="hero__img"
+          :class="{ 'is-visible': true }"
+          :src="about.img"
+          alt="About image"
+          decoding="async"
+          loading="eager"
+        />
+        <div class="hero__placeholder" v-else aria-label="No image available">
+          <span class="hero__placeholderText">MV</span>
+        </div>
       </div>
+
       <div class="hero__body">
         <h2 class="hero__name">{{ about?.intro }}</h2>
 
@@ -25,7 +38,6 @@
           </li>
         </ul>
 
-        <!-- SKILLS -->
         <div class="hero__skills" v-if="skills.length">
           <h3 class="sectionTitle">Skills</h3>
           <ul class="skills">
@@ -49,25 +61,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { fetchAboutForBlog, type AboutPayload } from '@/services/about'
+import { computed } from 'vue'
+import type { AboutPayload } from '@/services/about'
 
 type Block = { title: string; text: string }
 
-const about = ref<AboutPayload | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
+const props = defineProps<{
+  about: AboutPayload | null
+  imgLoaded: boolean
+}>()
 
-onMounted(async () => {
-  loading.value = true
-  try {
-    about.value = await fetchAboutForBlog()
-  } catch (e: any) {
-    error.value = e?.message ?? 'Error cargando About'
-  } finally {
-    loading.value = false
-  }
-})
+const imgLoaded = computed(() => props.imgLoaded)
+const about = computed(() => props.about)
 
 const skills = computed(() => {
   const s = about.value?.Skills ?? []
@@ -94,33 +99,104 @@ const aboutBlocks = computed<Block[]>(() => {
 
 <style scoped>
 .aboutBlog {
+  --brand: #304ffe;
+  --brand-2: #ea80fc;
+  --brand: #304ffe;
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text: #555757;
+  --muted: #3e3f3f;
+  --ring: rgba(48, 79, 254, 0.45);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  --shadow-hover: 0 0.2rem 0.2rem rgba(0, 0, 0, 0.3);
+
   width: min(100%, 1000px);
   margin: 0 auto;
   padding: 1.25rem;
-  color: #111;
+  color: var(--text);
 }
-
-/* Card base */
+@media (prefers-color-scheme: light) {
+  .aboutBlog {
+    --card-bg: #ffffff;
+    --card-border: rgba(12, 18, 28, 0.08);
+    --text: #555757;
+    --muted: #3e3f3f;
+    --ring: rgba(48, 79, 254, 0.35);
+    --shadow: 0 8px 26px rgba(14, 17, 22, 0.08);
+    --shadow-hover: 0 0.2rem 0.2rem rgba(14, 17, 22, 0.05);
+  }
+}
 .card {
-  background: #f5f6f7;
-  border: 1px solid #e3e3e3;
-  border-radius: 12px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  border-radius: 16px;
   padding: 1.25rem;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-hover);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  overflow: clip;
+}
+.presentationCard {
+  background: linear-gradient(120deg, rgba(48, 79, 254, 0.11), rgba(234, 128, 252, 0.11));
 }
 
-/* HERO */
 .hero {
   display: grid;
   grid-template-columns: 180px 1fr;
   gap: 1.25rem;
   margin-bottom: 1rem;
 }
-
 .hero__imgWrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: grid;
+  place-items: center;
+}
+
+.hero__placeholder {
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  border: 1px solid #ddd;
+  background: linear-gradient(135deg, #e9ecf2 0%, #f7f9fc 100%);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.hero__placeholderText {
+  font-weight: 800;
+  font-size: 2.25rem;
+  color: #8a93a5;
+  letter-spacing: 1px;
+}
+
+.hero__skeleton {
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  border: 1px solid #ddd;
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 37%, #eee 63%);
+  background-size: 400% 100%;
+  animation: shine 1.2s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
 }
 
 .hero__img {
@@ -130,35 +206,37 @@ const aboutBlocks = computed<Block[]>(() => {
   border-radius: 16px;
   border: 1px solid #ddd;
   background: #fff;
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
-
+.hero__img.is-visible {
+  opacity: 1;
+}
 .hero__body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
-
 .hero__name {
   font-weight: 800;
   margin: 0;
+  color: var(--text);
 }
-
 .hero__meta {
   display: grid;
   gap: 0.35rem;
 }
 .hero__metaItem {
   font-size: 0.98rem;
-  color: #333;
+  color: var(--muted);
 }
 
 .sectionTitle {
   font-size: 1.1rem;
   font-weight: 700;
   margin: 0;
+  color: var(--text);
 }
-
-/* Skills chips */
 .skills {
   display: flex;
   flex-wrap: wrap;
@@ -169,15 +247,13 @@ const aboutBlocks = computed<Block[]>(() => {
 }
 .skills__item {
   padding: 0.25rem 0.6rem;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  color: #222;
+  background: color-mix(in oklab, var(--card-bg), #ffffff 40%);
+  border: 1px solid var(--card-border);
+  color: var(--text);
   border-radius: 999px;
   font-size: 0.92rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
-
-/* About blocks */
 .about {
   margin-top: 1rem;
 }
@@ -187,23 +263,23 @@ const aboutBlocks = computed<Block[]>(() => {
   gap: 0.9rem;
 }
 .about__item {
-  background: #fff;
-  border: 1px solid #eee;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 1rem;
+  box-shadow: var(--shadow);
 }
 .about__title {
   font-size: 1rem;
   font-weight: 700;
   margin: 0 0 0.35rem 0;
+  color: var(--text);
 }
 .about__text {
   margin: 0;
-  color: #333;
+  color: var(--muted);
   line-height: 1.5;
 }
-
-/* Responsive */
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 140px 1fr;

@@ -1,25 +1,19 @@
 <!-- src\components\BlogScreens\PostListBlog.vue -->
 <template>
-  <div class="blogChildContainer">
-    <p></p>
+  <div class="postListBlog">
     <!-- Posts -->
     <div v-if="!selectedPost" class="postsContainers">
       <ul class="list-unstyled mt-3">
-        <li
-          v-for="item in datos"
-          :key="item.id"
-          @click="openPost(item)"
-          class="itemCard border rounded p-2 mb-2"
-        >
+        <li v-for="item in datos" :key="item.id" @click="openPost(item)" class="itemCard card mb-2">
           <div class="postImage"><img class="imagen" :src="item.image" alt="" /></div>
-          <div class="postText d-flex flex-column text-start">
+          <div class="postText d-flex flex-column text-start ps-3">
             <span class="titlePost">{{ item.name }}</span>
             <p class="postContent mb-1">
               {{ truncate(item.content) }}
               <a class="read-inline" @click.stop="openPost(item)"> read more</a>
             </p>
             <div class="d-flex justify-content-between align-items-center">
-              <span>{{ item.date }}</span>
+              <span>{{ item.dateLabel }}</span>
             </div>
           </div>
         </li>
@@ -31,18 +25,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchBlogPosts, type BlogPostDTO } from '@/services/blog'
+import { fetchBlogPosts, type BlogPost } from '@/services/blog'
 import SinglePost from './SinglePost.vue'
 
-interface Item {
-  id: number
-  image: string
-  name: string
-  content: string
-  date: string
-}
 const MAX_CHARS: number = 250
-const datos = ref<BlogPostDTO[]>([])
+const datos = ref<BlogPost[]>([])
+type Item = BlogPost
 const selectedPost = ref<Item | null>(null)
 const openPost = (item: Item) => {
   selectedPost.value = item
@@ -61,12 +49,19 @@ async function listar(): Promise<void> {
     console.error('Error cargando posts:', e)
   }
 }
-
 onMounted(listar)
 </script>
 
-<style>
-.blogChildContainer {
+<style scoped>
+.postListBlog {
+  --brand: #304ffe;
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text: #555757;
+  --muted: #3e3f3f;
+  --ring: rgba(48, 79, 254, 0.45);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  --shadow-hover: 0 0.2rem 0.2rem rgba(0, 0, 0, 0.3);
   position: relative;
   display: flex;
   justify-content: center;
@@ -74,67 +69,92 @@ onMounted(listar)
   height: 100%;
   margin: 0;
   padding: 1rem;
+  color: var(--text);
 }
 .postsContainers {
-  color: black;
-  width: 70%;
+  width: min(70%, 1000px);
+}
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: var(--shadow-hover);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  overflow: clip;
 }
 .itemCard {
-  display: flex;
-  align-items: top;
-  background-color: rgb(236, 236, 236);
+  display: grid;
+  grid-template-columns: 180px 1fr;
   cursor: pointer;
+  padding: 1rem;
+  border-radius: 16px;
 }
 .postImage {
-  width: 15rem;
-  height: auto;
-  display: block;
-  margin: 0.5rem;
+  width: 180px;
+  height: 130px;
+  border-radius: 12px;
+  overflow: hidden;
 }
 .imagen {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
 }
 .postText {
-  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
 }
 .titlePost {
-  color: black;
   font-weight: 800;
-  font-size: 1.5rem;
-  font-family: Calibri, 'Trebuchet MS', sans-serif;
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+  color: var(--text);
 }
 .postContent {
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 4 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  margin: 0;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
 }
 .read-inline {
-  color: #444444;
-  text-decoration: none;
+  color: grey;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 300;
-}
-.read-inline:hover {
   text-decoration: none;
+}
+@media (prefers-color-scheme: light) {
+  .postListBlog {
+    --card-bg: #ffffff;
+    --card-border: rgba(12, 18, 28, 0.08);
+    --text: #0e1116;
+    --muted: #4b5563;
+    --ring: rgba(48, 79, 254, 0.35);
+    --shadow: 0 8px 26px rgba(14, 17, 22, 0.08);
+    --shadow-hover: 0 0.2rem 0.2rem rgba(14, 17, 22, 0.05);
+  }
 }
 @media (max-width: 576px) {
   .postsContainers {
-    width: 100%;
+    width: 90%;
   }
   .itemCard {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    grid-template-columns: 1fr;
   }
   .postImage {
     width: 100%;
-    max-width: none;
-    margin: 0 0 1rem 0;
+    height: 180px;
+    margin-bottom: 0.75rem;
   }
+
   .postText {
     text-align: left;
     width: 100%;

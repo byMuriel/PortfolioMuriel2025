@@ -3,7 +3,6 @@
   <div class="container-fluid aboutApplication aboutShadow m-0 p-0">
     <!-- Tools Buttons -->
     <div class="tools">
-      <!-- <img v-if="imgs.logoPrinc" class="logoPrinc" :src="imgs.logoPrinc" alt="" /> -->
       <img
         v-if="logoAbout"
         :src="logoAbout"
@@ -123,17 +122,10 @@ const appLogos = useAppLogosStore()
 const redirectStore = useRedirectStore()
 const store = useAboutStore()
 const contactChannels = useContactChannelsStore()
-
 const logoAbout = computed(() => appLogos.getLogo('about'))
 const screen = ref<HTMLDivElement | null>(null)
 const more = ref(false)
 const expanded = ref<boolean[]>([])
-
-onMounted(() => {
-  if (!store.isFresh) void store.load()
-  if (!contactChannels.isFresh) void contactChannels.load()
-})
-
 const AboutContent: ComputedRef<{
   logo: string
   img: string
@@ -169,6 +161,17 @@ const titles = computed<string[]>(() => store.about?.AboutMeTitles ?? [])
 const paragraphs = computed<string[]>(() => store.about?.AboutMe ?? [])
 const linkLinkedIn = computed(() => contactChannels.getLinkByCode('linkedin'))
 
+/*****************************************************************************************
+ * WATCH: titles
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Observes changes in the `titles` array to initialize the expanded sections.
+ *              - Ensures `expanded` is a safe array of booleans.
+ *              - Automatically expands only the first section when the component mounts.
+ *
+ * DESCRIPCIÓN: Observa los cambios en el arreglo `titles` para inicializar las secciones expandidas.
+ *              - Asegura que `expanded` sea un arreglo seguro de valores booleanos.
+ *              - Expande automáticamente solo la primera sección al montar el componente.
+ *****************************************************************************************/
 watch(
   titles,
   (arr) => {
@@ -177,20 +180,86 @@ watch(
   },
   { immediate: true },
 )
+/*****************************************************************************************
+ * LIFECYCLE: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Loads initial data when the component is mounted.
+ *              - Loads `about` store data if it’s not already loaded.
+ *              - Loads `contactChannels` store data if needed.
+ *
+ * DESCRIPCIÓN: Carga los datos iniciales al montar el componente.
+ *              - Carga los datos del store `about` si aún no están cargados.
+ *              - Carga los datos del store `contactChannels` en caso necesario.
+ *****************************************************************************************/
+onMounted(() => {
+  if (!store.isFresh) void store.load()
+  if (!contactChannels.isFresh) void contactChannels.load()
+})
+/*****************************************************************************************
+ * FUNCTION: onImgError
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles image loading errors by replacing them with a fallback image.
+ *              - Prevents infinite error loops by removing the handler.
+ *              - Uses a generic placeholder stored in `/fallbacks/app-default.png`.
+ *
+ * DESCRIPCIÓN: Maneja los errores de carga de imágenes reemplazándolas con una imagen por defecto.
+ *              - Evita bucles infinitos eliminando el manejador de error.
+ *              - Usa una imagen genérica ubicada en `/fallbacks/app-default.png`.
+ *****************************************************************************************/
 function onImgError(e: Event) {
   const el = e.target as HTMLImageElement
   el.onerror = null
   el.src = '/fallbacks/app-default.png'
 }
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles screen redirection within the tablet interface.
+ *              - Delegates navigation to the global `redirectStore`.
+ *
+ * DESCRIPCIÓN: Gestiona la redirección entre pantallas dentro de la interfaz de la tablet.
+ *              - Delegar la navegación al store global `redirectStore`.
+ *****************************************************************************************/
 function go(to: string) {
   redirectStore.redirect(to)
 }
+/*****************************************************************************************
+ * FUNCTION: showSection
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Expands a specific “About Me” section by its index.
+ *              - Validates the index to prevent out-of-range errors.
+ *              - Marks the selected section as expanded.
+ *
+ * DESCRIPCIÓN: Expande una sección específica de “About Me” según su índice.
+ *              - Valida el índice para evitar errores fuera de rango.
+ *              - Marca la sección seleccionada como expandida.
+ *****************************************************************************************/
 function showSection(i: number) {
   if (i >= 0 && i < expanded.value.length) expanded.value[i] = true
 }
+/*****************************************************************************************
+ * FUNCTION: hideSection
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Collapses a specific “About Me” section by its index.
+ *              - Validates the index before modifying the array.
+ *              - Marks the selected section as collapsed.
+ *
+ * DESCRIPCIÓN: Colapsa una sección específica de “About Me” según su índice.
+ *              - Valida el índice antes de modificar el arreglo.
+ *              - Marca la sección seleccionada como colapsada.
+ *****************************************************************************************/
 function hideSection(i: number) {
   if (i >= 0 && i < expanded.value.length) expanded.value[i] = false
 }
+/*****************************************************************************************
+ * CONSTANT: domReady
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Promise that resolves once the component is fully mounted.
+ *              - Useful for awaiting DOM readiness before executing layout logic.
+ *
+ * DESCRIPCIÓN: Promesa que se resuelve una vez que el componente está completamente montado.
+ *              - Útil para esperar la disponibilidad del DOM antes de ejecutar lógica de diseño.
+ *****************************************************************************************/
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
@@ -204,7 +273,6 @@ defineExpose<{ screen: Ref<HTMLDivElement | null>; domReady: Promise<void> }>({ 
   width: 100%;
   height: 100%;
   pointer-events: auto;
-
   justify-content: start;
   align-items: center;
   font-family: sans-serif;
@@ -257,8 +325,8 @@ defineExpose<{ screen: Ref<HTMLDivElement | null>; domReady: Promise<void> }>({ 
 }
 .logoPrinc {
   width: 15%;
-  height: auto; /* mantiene la relación de aspecto */
-  object-fit: contain; /* opcional, útil si luego usas max-width/height */
+  height: auto;
+  object-fit: contain;
   display: block;
 }
 .textIcon {
@@ -365,7 +433,6 @@ defineExpose<{ screen: Ref<HTMLDivElement | null>; domReady: Promise<void> }>({ 
   color: rgba(39, 39, 39, 0.86);
   font-family: Arial, sans-serif;
 }
-/* Opcional: un poco de aire y buen wrap */
 .text-dark .skills-line {
   margin-left: 0.25rem;
   white-space: normal;

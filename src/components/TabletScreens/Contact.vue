@@ -27,7 +27,6 @@
         </div>
       </div>
     </div>
-
     <!-- Content -->
     <div class="containerContact">
       <div
@@ -78,15 +77,10 @@ type ContactVM = {
   goTo: string
   message?: string
 }
-
 const screen: Ref<HTMLDivElement | null> = ref(null)
 const clicked = ref<boolean[]>([])
 const redirectStore = useRedirectStore()
 const store = useContactChannelsStore()
-
-onMounted(() => {
-  void store.load({ appKey: 'contact' })
-})
 const ContactImage = computed<ContactVM[]>(() =>
   store.channels.map((ch) => ({
     name: ch.name,
@@ -97,9 +91,17 @@ const ContactImage = computed<ContactVM[]>(() =>
   })),
 )
 
-// watchEffect(() => {
-//   clicked.value = Array(contactKeys.value.length).fill(false)
-// })
+/*****************************************************************************************
+ * WATCH: ContactImage
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Observes changes in the `ContactImage` list to reset click interaction states.
+ *              - Initializes the `clicked` array with `false` values matching the number of images.
+ *              - Ensures all contact images start unclicked when the list updates or mounts.
+ *
+ * DESCRIPCIÓN: Observa los cambios en la lista `ContactImage` para reiniciar los estados de interacción.
+ *              - Inicializa el arreglo `clicked` con valores `false` según la cantidad de imágenes.
+ *              - Garantiza que todas las imágenes de contacto comiencen sin estar presionadas al actualizar o montar.
+ *****************************************************************************************/
 watch(
   ContactImage,
   (list) => {
@@ -107,7 +109,29 @@ watch(
   },
   { immediate: true },
 )
-
+/*****************************************************************************************
+ * LIFECYCLE: onMounted
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Loads contact data when the component is mounted.
+ *              - Fetches data from the contact store using the key `'contact'`.
+ *
+ * DESCRIPCIÓN: Carga los datos de contacto al montar el componente.
+ *              - Obtiene los datos desde el store de contactos usando la clave `'contact'`.
+ *****************************************************************************************/
+onMounted(() => {
+  void store.load({ appKey: 'contact' })
+})
+/*****************************************************************************************
+ * FUNCTION: go
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles redirection logic for contact actions.
+ *              - If a route key (`to`) is provided, navigates using the redirect store.
+ *              - Otherwise, opens LinkedIn or GitHub links in a new browser tab.
+ *
+ * DESCRIPCIÓN: Gestiona la lógica de redirección para las acciones de contacto.
+ *              - Si se proporciona una clave de ruta (`to`), navega mediante el store de redirección.
+ *              - De lo contrario, abre los enlaces de LinkedIn o GitHub en una nueva pestaña del navegador.
+ *****************************************************************************************/
 function go(to: string, contact?: ContactVM) {
   if (to && to !== '') {
     redirectStore.redirect(to)
@@ -118,9 +142,27 @@ function go(to: string, contact?: ContactVM) {
     window.open(url, '_blank')
   }
 }
+/*****************************************************************************************
+ * FUNCTION: getIn
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Marks a contact image as clicked (hovered or focused).
+ *              - Updates the `clicked` array at the specified index to `true`.
+ *
+ * DESCRIPCIÓN: Marca una imagen de contacto como presionada (hover o enfoque).
+ *              - Actualiza el arreglo `clicked` en el índice especificado a `true`.
+ *****************************************************************************************/
 function getIn(index: number): void {
   clicked.value[index] = true
 }
+/*****************************************************************************************
+ * FUNCTION: getOut
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Unmarks a contact image when the pointer leaves or loses focus.
+ *              - Updates the `clicked` array at the specified index to `false`.
+ *
+ * DESCRIPCIÓN: Desmarca una imagen de contacto cuando el puntero sale o pierde el foco.
+ *              - Actualiza el arreglo `clicked` en el índice especificado a `false`.
+ *****************************************************************************************/
 function getOut(index: number): void {
   clicked.value[index] = false
 }
