@@ -1,115 +1,73 @@
-<!-- src/components/TabletScene.vue -->
-<template>
-  <!-- Preloader -->
-  <transition name="preloader-fade" @after-leave="onPreloaderLeave">
-    <div v-if="showPreloader && !assets.initIconsReady" class="preloader">
-      <div class="preloader-inner" :class="{ 'fade-out-dots': !isLoading }">
-        <div class="dot-loader">
-          <span class="dot dot1"></span>
-          <span class="dot dot2"></span>
-          <span class="dot dot3"></span>
-          <span class="dot dot4"></span>
-          <span class="dot dot5"></span>
-          <span class="dot dot6"></span>
-          <span class="dot dot7"></span>
-        </div>
-        <p class="loading-text">CARGANDO...</p>
-      </div>
-    </div>
-  </transition>
-
-  <!-- Scene -->
-  <div ref="container" class="containerPrincipal" style="width: 100%; height: 100vh">
-    <div v-if="!showPreloader && startContainer" class="start-screen">
-      <div @click="start" class="startButton">LET'S GO</div>
-    </div>
-  </div>
-
-  <!-- Tablet Screen -->
-  <div id="screen-overlay" :class="overlayClass">
-    <transition name="fade" appear>
-      <TabletContent v-if="showTabletContent" />
-    </transition>
-  </div>
-</template>
-
-<script setup lang="ts">
-import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { provide, ref, onMounted, onBeforeUnmount, onBeforeMount } from 'vue'
-import { useAssetsPreload } from '@/stores/useAssetsPreload'
-import TabletContent from './TabletContent.vue'
-
-const assets = useAssetsPreload()
-const isMobile = window.matchMedia('(max-width: 420px)').matches
-const isLoading = ref<boolean>(true)
-const showPreloader = ref<boolean>(true)
-const startContainer = ref<boolean>(true)
-const container = ref<HTMLDivElement | null>(null)
-const showTabletContent = ref<boolean>(false)
-const overlayClass = ref<string>('overlay overlay-shadow')
-
-let renderer!: THREE.WebGLRenderer
-let scene!: THREE.Scene
-let camera!: THREE.PerspectiveCamera
-let screenMaterial: THREE.MeshBasicMaterial | null = null
-let screen: THREE.Mesh<RoundedBoxGeometry, THREE.MeshBasicMaterial> | null = null
-let animationId: number | undefined
-let overlayShown: boolean = false
-const tabletGroup = new THREE.Group()
-
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { provide, ref, onMounted, onBeforeUnmount, onBeforeMount } from 'vue';
+import { useAssetsPreload } from '@/stores/useAssetsPreload';
+import TabletContent from './TabletContent.vue';
+const assets = useAssetsPreload();
+const isMobile = window.matchMedia('(max-width: 420px)').matches;
+const isLoading = ref(true);
+const showPreloader = ref(true);
+const startContainer = ref(true);
+const container = ref(null);
+const showTabletContent = ref(false);
+const overlayClass = ref('overlay overlay-shadow');
+let renderer;
+let scene;
+let camera;
+let screenMaterial = null;
+let screen = null;
+let animationId;
+let overlayShown = false;
+const tabletGroup = new THREE.Group();
 // Dimensions and properties of the tablet / Dimensiones y propiedades de la tablet
-const outerWidth: number = 8
-const outerHeight: number = 12
-const depthMarco: number = 0.2
-const depthBase: number = 0.6
-const horizontalThickness: number = 1.5 // top/bottom
-const verticalThickness: number = 0.3
-const thickness: number = 0.3
-const screenWidth: number = outerWidth - thickness * 2
-const screenHeight: number = outerHeight - 2 - thickness * 2
-
+const outerWidth = 8;
+const outerHeight = 12;
+const depthMarco = 0.2;
+const depthBase = 0.6;
+const horizontalThickness = 1.5; // top/bottom
+const verticalThickness = 0.3;
+const thickness = 0.3;
+const screenWidth = outerWidth - thickness * 2;
+const screenHeight = outerHeight - 2 - thickness * 2;
 // Light variables / Variables de luz
-let leftLight: THREE.SpotLight | null = null
-let centerLight: THREE.SpotLight | null = null
-let rightLight: THREE.SpotLight | null = null
-const colorWhite: THREE.ColorRepresentation = 0xfffcfe
-
+let leftLight = null;
+let centerLight = null;
+let rightLight = null;
+const colorWhite = 0xfffcfe;
 // Variables para la animación
-let startPos: THREE.Vector3 // Posición inicial
-let endPos: THREE.Vector3 // Posición final  // Posición final
-const startFov: number = 75 // FOV inicial
-const endFov: number = 35 // FOV final
-let startTime: number | null = null
-let rotationStartedAt: number | null = null
-
+let startPos; // Posición inicial
+let endPos; // Posición final  // Posición final
+const startFov = 75; // FOV inicial
+const endFov = 35; // FOV final
+let startTime = null;
+let rotationStartedAt = null;
 // Animation
-let durationRotation: number
-let durationCameraZoom: number
-let spin: number
+let durationRotation;
+let durationCameraZoom;
+let spin;
 if (isMobile) {
-  durationRotation = 1.8
-  durationCameraZoom = 1.6
-  spin = 0
-  startPos = new THREE.Vector3(-15, 30, 30)
-  endPos = new THREE.Vector3(0, 0, 20)
-} else {
-  durationRotation = 1.7
-  durationCameraZoom = 2.1
-  spin = 2
-  startPos = new THREE.Vector3(-15, 30, -30)
-  endPos = new THREE.Vector3(0, 0, 20)
+    durationRotation = 1.8;
+    durationCameraZoom = 1.6;
+    spin = 0;
+    startPos = new THREE.Vector3(-15, 30, 30);
+    endPos = new THREE.Vector3(0, 0, 20);
 }
-const totalDuration: number = durationRotation + durationCameraZoom
-const recorteTiempoParaMostrarLaPantalla: number = 1.7
-let endPos2: THREE.Vector3 | null = null // destino del segundo zoom (solo mobile)
-let secondZoomTriggered = false
-let secondZoomStartedAt: number | null = null // tiempo de inicio del segundo zoom
-const mobileSecondZoomDuration = 0.3 // duración del segundo zoom
-const mobileSecondZoomFov = 28 // FOV final en el segundo zoom
-const mobileSecondZoomMargin = 0.6 // qué tan cerca de la pantalla
-const data = ref({})
-
+else {
+    durationRotation = 1.7;
+    durationCameraZoom = 2.1;
+    spin = 2;
+    startPos = new THREE.Vector3(-15, 30, -30);
+    endPos = new THREE.Vector3(0, 0, 20);
+}
+const totalDuration = durationRotation + durationCameraZoom;
+const recorteTiempoParaMostrarLaPantalla = 1.7;
+let endPos2 = null; // destino del segundo zoom (solo mobile)
+let secondZoomTriggered = false;
+let secondZoomStartedAt = null; // tiempo de inicio del segundo zoom
+const mobileSecondZoomDuration = 0.3; // duración del segundo zoom
+const mobileSecondZoomFov = 28; // FOV final en el segundo zoom
+const mobileSecondZoomMargin = 0.6; // qué tan cerca de la pantalla
+const data = ref({});
 /*****************************************************************************************
  * FUNCTION: getScreenWorldPos
  * AUTHOR: Muriel Vitale.
@@ -123,11 +81,11 @@ const data = ref({})
  *              - Aplica la matriz de mundo de la pantalla al origen local (0,0,0).
  * RETORNA: THREE.Vector3 → Posición central de la pantalla en coordenadas de mundo.
  *****************************************************************************************/
-function getScreenWorldPos(): THREE.Vector3 {
-  const p = new THREE.Vector3(0, 0, 0)
-  screen!.updateMatrixWorld(true)
-  p.applyMatrix4(screen!.matrixWorld)
-  return p
+function getScreenWorldPos() {
+    const p = new THREE.Vector3(0, 0, 0);
+    screen.updateMatrixWorld(true);
+    p.applyMatrix4(screen.matrixWorld);
+    return p;
 }
 /*****************************************************************************************
  * FUNCTION: fitSceneForDevice
@@ -146,16 +104,17 @@ function getScreenWorldPos(): THREE.Vector3 {
  * PARÁMETROS:
  *   - margin (Número, por defecto: 1.15): Multiplicador de espacio extra como padding seguro.
  *****************************************************************************************/
-function fitSceneForDevice(margin: number = 1.15): void {
-  if (!camera || !renderer) return
-  const aspect = window.innerWidth / window.innerHeight
-  const vFov = THREE.MathUtils.degToRad(endFov)
-  const halfH = outerHeight / 2
-  const halfW = outerWidth / 2
-  const distHeight = halfH / Math.tan(vFov / 2)
-  const distWidth = halfW / (Math.tan(vFov / 2) * aspect)
-  const distance = Math.max(distHeight, distWidth) * margin
-  endPos.set(0, 0, distance)
+function fitSceneForDevice(margin = 1.15) {
+    if (!camera || !renderer)
+        return;
+    const aspect = window.innerWidth / window.innerHeight;
+    const vFov = THREE.MathUtils.degToRad(endFov);
+    const halfH = outerHeight / 2;
+    const halfW = outerWidth / 2;
+    const distHeight = halfH / Math.tan(vFov / 2);
+    const distWidth = halfW / (Math.tan(vFov / 2) * aspect);
+    const distance = Math.max(distHeight, distWidth) * margin;
+    endPos.set(0, 0, distance);
 }
 /*****************************************************************************************
  * FUNCTION: onPreloaderLeave
@@ -167,8 +126,8 @@ function fitSceneForDevice(margin: number = 1.15): void {
  *              - Establece `showPreloader` en falso para ocultar completamente el preloader
  *                después de su salida.
  *****************************************************************************************/
-function onPreloaderLeave(): void {
-  showPreloader.value = false
+function onPreloaderLeave() {
+    showPreloader.value = false;
 }
 /*****************************************************************************************
  * FUNCTION: start
@@ -195,18 +154,17 @@ function onPreloaderLeave(): void {
  *              - Renderiza el primer fotograma.
  *              - Inicia el bucle de animación con `requestAnimationFrame(startAnimation)`.
  *****************************************************************************************/
-function start(): void {
-  startContainer.value = false
-  startTime = null
-  rotationStartedAt = null
-
-  initScene()
-  createRoomEnvironment()
-  createTablet()
-  fitSceneForDevice()
-  addTopSpotLights()
-  renderer.render(scene, camera)
-  requestAnimationFrame(startAnimation)
+function start() {
+    startContainer.value = false;
+    startTime = null;
+    rotationStartedAt = null;
+    initScene();
+    createRoomEnvironment();
+    createTablet();
+    fitSceneForDevice();
+    addTopSpotLights();
+    renderer.render(scene, camera);
+    requestAnimationFrame(startAnimation);
 }
 /*****************************************************************************************
  * FUNCTION: initScene
@@ -227,32 +185,28 @@ function start(): void {
  *              - Establece configuraciones del renderer como tamaño y color de fondo.
  *              - Añade el canvas del renderer al contenedor en el DOM.
  *****************************************************************************************/
-function initScene(): void {
-  // Create scene / Crear escena
-  scene = new THREE.Scene()
-  const width: number = window.innerWidth
-  const height: number = window.innerHeight
-
-  // Camera / Cámara
-  camera = new THREE.PerspectiveCamera(startFov, width / height, 0.1, 100)
-  // camera.position.set(0, 0, 20)
-  camera.position.set(-15, 30, 30)
-
-  if (!container.value) {
-    throw new Error('initScene: container no está montado')
-  }
-
-  // Renderer / Renderizador
-  const colorFondo: string = '#000000' // gris oscuro '#222222' // blanco 0xffffff
-  renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    preserveDrawingBuffer: false, // activa para mantener el buffer
-  })
-
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.setSize(width, height)
-  renderer.setClearColor(colorFondo)
-  container.value.appendChild(renderer.domElement)
+function initScene() {
+    // Create scene / Crear escena
+    scene = new THREE.Scene();
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    // Camera / Cámara
+    camera = new THREE.PerspectiveCamera(startFov, width / height, 0.1, 100);
+    // camera.position.set(0, 0, 20)
+    camera.position.set(-15, 30, 30);
+    if (!container.value) {
+        throw new Error('initScene: container no está montado');
+    }
+    // Renderer / Renderizador
+    const colorFondo = '#000000'; // gris oscuro '#222222' // blanco 0xffffff
+    renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: false, // activa para mantener el buffer
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    renderer.setClearColor(colorFondo);
+    container.value.appendChild(renderer.domElement);
 }
 /*****************************************************************************************
  * FUNCTION: createRoomEnvironment
@@ -269,47 +223,33 @@ function initScene(): void {
  *              - Todos los elementos comparten el mismo color y dimensiones basadas en `roomSize` y `wallHeight`.
  *              - La habitación actúa como fondo o contenedor para el resto de los elementos 3D.
  *****************************************************************************************/
-function createRoomEnvironment(): void {
-  const roomSize: number = 100
-  const wallHeight: number = 100
-  const colorRoom: number = 0x126cfc //azul  0x6f25f7 // morado 0x25e2f7 // cian
-
-  const floorGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry(roomSize, roomSize)
-  const floorMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
-    color: colorRoom,
-  }) // 0x5043d9 }) // 0x6116c4 }) //
-  const floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    floorGeometry,
-    floorMaterial,
-  )
-  floor.rotation.x = -Math.PI / 2
-  floor.position.y = -7
-  scene.add(floor)
-
-  const backWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: colorRoom }),
-  )
-  backWall.position.set(0, wallHeight / 2 - 7, -roomSize / 2)
-  scene.add(backWall)
-
-  const frontWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = backWall.clone()
-  frontWall.rotation.y = Math.PI
-  frontWall.position.z = roomSize / 2
-  scene.add(frontWall)
-
-  const rightWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    new THREE.PlaneGeometry(roomSize, wallHeight),
-    new THREE.MeshStandardMaterial({ color: colorRoom }),
-  )
-  rightWall.rotation.y = -Math.PI / 2
-  rightWall.position.set(roomSize / 2, wallHeight / 2 - 7, 0)
-  scene.add(rightWall)
-
-  const leftWall: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> = rightWall.clone()
-  leftWall.position.x = -roomSize / 2
-  leftWall.rotation.y = Math.PI / 2
-  scene.add(leftWall)
+function createRoomEnvironment() {
+    const roomSize = 100;
+    const wallHeight = 100;
+    const colorRoom = 0x126cfc; //azul  0x6f25f7 // morado 0x25e2f7 // cian
+    const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+        color: colorRoom,
+    }); // 0x5043d9 }) // 0x6116c4 }) //
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -7;
+    scene.add(floor);
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, wallHeight), new THREE.MeshStandardMaterial({ color: colorRoom }));
+    backWall.position.set(0, wallHeight / 2 - 7, -roomSize / 2);
+    scene.add(backWall);
+    const frontWall = backWall.clone();
+    frontWall.rotation.y = Math.PI;
+    frontWall.position.z = roomSize / 2;
+    scene.add(frontWall);
+    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, wallHeight), new THREE.MeshStandardMaterial({ color: colorRoom }));
+    rightWall.rotation.y = -Math.PI / 2;
+    rightWall.position.set(roomSize / 2, wallHeight / 2 - 7, 0);
+    scene.add(rightWall);
+    const leftWall = rightWall.clone();
+    leftWall.position.x = -roomSize / 2;
+    leftWall.rotation.y = Math.PI / 2;
+    scene.add(leftWall);
 }
 /*****************************************************************************************
  * FUNCTION: createTablet
@@ -332,105 +272,55 @@ function createRoomEnvironment(): void {
  *              - Agrupa todos los componentes en `tabletGroup` y lo añade a la escena.
  *              - Ajusta la cámara para que apunte hacia la posición de la tablet.
  *****************************************************************************************/
-function createTablet(): void {
-  // Tablet frame / Marco de la Tablet
-  const frameMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 0.8,
-    roughness: 0.2,
-  })
-  const horizontal: RoundedBoxGeometry = new RoundedBoxGeometry(
-    outerWidth - 0.2,
-    horizontalThickness - 0.2,
-    depthMarco,
-    5,
-    0.3,
-  )
-  const vertical: RoundedBoxGeometry = new RoundedBoxGeometry(
-    verticalThickness - 0.2,
-    outerHeight - 0.2,
-    depthMarco,
-    5,
-    0.3,
-  )
-  const top: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    horizontal,
-    frameMaterial,
-  )
-  top.position.y = outerHeight / 2 - horizontalThickness / 2
-
-  const bottom: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    horizontal,
-    frameMaterial,
-  )
-  bottom.position.y = -(outerHeight / 2) + horizontalThickness / 2
-
-  const left: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    vertical,
-    frameMaterial,
-  )
-  left.position.x = -(outerWidth / 2) + verticalThickness / 2
-
-  const right: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    vertical,
-    frameMaterial,
-  )
-  right.position.x = outerWidth / 2 - verticalThickness / 2
-
-  tabletGroup.add(top, bottom, left, right)
-
-  // Back Cover / Tapa trasera
-  const backPlateGeometry: RoundedBoxGeometry = new RoundedBoxGeometry(
-    outerWidth,
-    outerHeight,
-    depthBase,
-    5,
-    0.3,
-  )
-  const backPlateMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 0.8,
-    roughness: 0.2,
-  })
-  const backPlate: THREE.Mesh<RoundedBoxGeometry, THREE.MeshStandardMaterial> = new THREE.Mesh(
-    backPlateGeometry,
-    backPlateMaterial,
-  )
-  backPlate.position.z = -0.11
-  tabletGroup.add(backPlate)
-
-  // Sunken screen / Pantalla hundida
-  const screenGeometry: RoundedBoxGeometry = new RoundedBoxGeometry(
-    screenWidth,
-    screenHeight,
-    depthMarco,
-    5,
-    0.3,
-  )
-
-  screenMaterial = new THREE.MeshBasicMaterial({
-    color: 0x000000,
-    reflectivity: 1,
-    transparent: true,
-    opacity: 0.7,
-  })
-  screen = new THREE.Mesh(screenGeometry, screenMaterial)
-  screen.position.z = 0.01
-  tabletGroup.add(screen)
-
-  // Target for spotlight so lights point to a specific place
-  // Target del spotlight para que las luces apunten a un lugar especifico
-  const screenTarget: THREE.Object3D = new THREE.Object3D()
-  screenTarget.position.copy(screen.position)
-  tabletGroup.add(screenTarget)
-
-  scene.add(tabletGroup)
-
-  if (isMobile) {
-    tabletGroup.rotation.set(0, Math.PI, 0)
-  }
-
-  camera.lookAt(tabletGroup.position)
+function createTablet() {
+    // Tablet frame / Marco de la Tablet
+    const frameMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 0.8,
+        roughness: 0.2,
+    });
+    const horizontal = new RoundedBoxGeometry(outerWidth - 0.2, horizontalThickness - 0.2, depthMarco, 5, 0.3);
+    const vertical = new RoundedBoxGeometry(verticalThickness - 0.2, outerHeight - 0.2, depthMarco, 5, 0.3);
+    const top = new THREE.Mesh(horizontal, frameMaterial);
+    top.position.y = outerHeight / 2 - horizontalThickness / 2;
+    const bottom = new THREE.Mesh(horizontal, frameMaterial);
+    bottom.position.y = -(outerHeight / 2) + horizontalThickness / 2;
+    const left = new THREE.Mesh(vertical, frameMaterial);
+    left.position.x = -(outerWidth / 2) + verticalThickness / 2;
+    const right = new THREE.Mesh(vertical, frameMaterial);
+    right.position.x = outerWidth / 2 - verticalThickness / 2;
+    tabletGroup.add(top, bottom, left, right);
+    // Back Cover / Tapa trasera
+    const backPlateGeometry = new RoundedBoxGeometry(outerWidth, outerHeight, depthBase, 5, 0.3);
+    const backPlateMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 0.8,
+        roughness: 0.2,
+    });
+    const backPlate = new THREE.Mesh(backPlateGeometry, backPlateMaterial);
+    backPlate.position.z = -0.11;
+    tabletGroup.add(backPlate);
+    // Sunken screen / Pantalla hundida
+    const screenGeometry = new RoundedBoxGeometry(screenWidth, screenHeight, depthMarco, 5, 0.3);
+    screenMaterial = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        reflectivity: 1,
+        transparent: true,
+        opacity: 0.7,
+    });
+    screen = new THREE.Mesh(screenGeometry, screenMaterial);
+    screen.position.z = 0.01;
+    tabletGroup.add(screen);
+    // Target for spotlight so lights point to a specific place
+    // Target del spotlight para que las luces apunten a un lugar especifico
+    const screenTarget = new THREE.Object3D();
+    screenTarget.position.copy(screen.position);
+    tabletGroup.add(screenTarget);
+    scene.add(tabletGroup);
+    if (isMobile) {
+        tabletGroup.rotation.set(0, Math.PI, 0);
+    }
+    camera.lookAt(tabletGroup.position);
 }
 /*****************************************************************************************
  * FUNCTION: addTopSpotLights
@@ -453,61 +343,35 @@ function createTablet(): void {
  *              - Habilita el uso de mapas de sombras en el renderizador.
  *              - Permite que la tablet proyecte y reciba sombras.
  *****************************************************************************************/
-function addTopSpotLights(): void {
-  const xlight: number = 30 //50
-  const ylight: number = 30 // 50
-  const zlight: number = -20 // -40
-  const lightIntensity: number = 500 // 300
-  const lightDistance: number = 100
-  const lightAngle: number = Math.PI / 12 // / 2 // 22.5 degrees
-  const lightPenumbra: number = 0.2 // 1 // 0.2 // Suavizado de la luz
-  const lightDecay: number = 2 // 1 // Decaimiento de la luz
-
-  leftLight = new THREE.SpotLight(
-    colorWhite,
-    lightIntensity,
-    lightDistance,
-    lightAngle,
-    lightPenumbra,
-    lightDecay,
-  )
-  leftLight.position.set(-xlight, 45, zlight) // Posición de la luz (arriba a la izquierda)
-  leftLight.target = tabletGroup // Apunta hacia el cubo
-  leftLight.castShadow = true // Habilitar sombras
-  scene.add(leftLight)
-
-  centerLight = new THREE.SpotLight(
-    colorWhite,
-    lightIntensity,
-    lightDistance,
-    lightAngle,
-    lightPenumbra,
-    lightDecay,
-  )
-  centerLight.position.set(0, ylight, zlight + -zlight) // Posición de la luz (centro superior)
-  centerLight.target = tabletGroup // Apunta hacia el cubo
-  // centerLight.castShadow = true // Habilitar sombras
-  scene.add(centerLight)
-
-  rightLight = new THREE.SpotLight(
-    colorWhite,
-    lightIntensity,
-    lightDistance,
-    lightAngle,
-    lightPenumbra,
-    lightDecay,
-  )
-  rightLight.position.set(xlight, ylight, zlight) // Posición de la luz (arriba a la derecha)
-  rightLight.target = tabletGroup // Apunta hacia el cubo
-  rightLight.castShadow = true // Habilitar sombras
-  scene.add(rightLight)
-
-  // Configurar la sombra de las luces
-  renderer.shadowMap.enabled = true // Habilitar mapas de sombras en el renderizador
-
-  // Hacer que el cubo pueda recibir sombras
-  tabletGroup.receiveShadow = true
-  tabletGroup.castShadow = true
+function addTopSpotLights() {
+    const xlight = 30; //50
+    const ylight = 30; // 50
+    const zlight = -20; // -40
+    const lightIntensity = 500; // 300
+    const lightDistance = 100;
+    const lightAngle = Math.PI / 12; // / 2 // 22.5 degrees
+    const lightPenumbra = 0.2; // 1 // 0.2 // Suavizado de la luz
+    const lightDecay = 2; // 1 // Decaimiento de la luz
+    leftLight = new THREE.SpotLight(colorWhite, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay);
+    leftLight.position.set(-xlight, 45, zlight); // Posición de la luz (arriba a la izquierda)
+    leftLight.target = tabletGroup; // Apunta hacia el cubo
+    leftLight.castShadow = true; // Habilitar sombras
+    scene.add(leftLight);
+    centerLight = new THREE.SpotLight(colorWhite, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay);
+    centerLight.position.set(0, ylight, zlight + -zlight); // Posición de la luz (centro superior)
+    centerLight.target = tabletGroup; // Apunta hacia el cubo
+    // centerLight.castShadow = true // Habilitar sombras
+    scene.add(centerLight);
+    rightLight = new THREE.SpotLight(colorWhite, lightIntensity, lightDistance, lightAngle, lightPenumbra, lightDecay);
+    rightLight.position.set(xlight, ylight, zlight); // Posición de la luz (arriba a la derecha)
+    rightLight.target = tabletGroup; // Apunta hacia el cubo
+    rightLight.castShadow = true; // Habilitar sombras
+    scene.add(rightLight);
+    // Configurar la sombra de las luces
+    renderer.shadowMap.enabled = true; // Habilitar mapas de sombras en el renderizador
+    // Hacer que el cubo pueda recibir sombras
+    tabletGroup.receiveShadow = true;
+    tabletGroup.castShadow = true;
 }
 /*****************************************************************************************
  * FUNCTION: addPrincipalLights
@@ -581,9 +445,9 @@ function addTopSpotLights(): void {
  *              - Aplica una rotación completa de 360° (2π radianes) de forma progresiva a medida que `t` aumenta.
  *              - Asegura que la rotación no exceda una vuelta completa limitando `t` a un máximo de 1.
  *****************************************************************************************/
-function animateTabletRotation(elapsedTime: number, durationRotation: number): void {
-  const t: number = Math.min(elapsedTime / durationRotation, 1)
-  tabletGroup.rotation.y = Math.PI * spin * t
+function animateTabletRotation(elapsedTime, durationRotation) {
+    const t = Math.min(elapsedTime / durationRotation, 1);
+    tabletGroup.rotation.y = Math.PI * spin * t;
 }
 /*****************************************************************************************
  * FUNCTION: animateCameraZoom
@@ -614,21 +478,21 @@ function animateTabletRotation(elapsedTime: number, durationRotation: number): v
  *   - delay (Número): Tiempo de espera antes de iniciar la animación de zoom.
  *   - durationCameraZoom (Número): Duración total de la fase de acercamiento, en segundos.
  *****************************************************************************************/
-function animateCameraZoom(elapsedTime: number, delay: number, durationCameraZoom: number): void {
-  const cameraElapsedTime: number = elapsedTime - delay
-
-  if (cameraElapsedTime < 0) return
-
-  if (cameraElapsedTime < durationCameraZoom) {
-    const t = cameraElapsedTime / durationCameraZoom
-    camera.position.lerpVectors(startPos, endPos, t)
-    camera.fov = startFov + (endFov - startFov) * t
-  } else {
-    camera.position.copy(endPos)
-    camera.fov = endFov
-  }
-  camera.updateProjectionMatrix()
-  camera.lookAt(tabletGroup.position)
+function animateCameraZoom(elapsedTime, delay, durationCameraZoom) {
+    const cameraElapsedTime = elapsedTime - delay;
+    if (cameraElapsedTime < 0)
+        return;
+    if (cameraElapsedTime < durationCameraZoom) {
+        const t = cameraElapsedTime / durationCameraZoom;
+        camera.position.lerpVectors(startPos, endPos, t);
+        camera.fov = startFov + (endFov - startFov) * t;
+    }
+    else {
+        camera.position.copy(endPos);
+        camera.fov = endFov;
+    }
+    camera.updateProjectionMatrix();
+    camera.lookAt(tabletGroup.position);
 }
 /*****************************************************************************************
  * FUNCTION: updateOverlayPosition
@@ -671,47 +535,41 @@ function animateCameraZoom(elapsedTime: number, delay: number, durationCameraZoo
  *   - Depende de que la cámara y la matriz de mundo de la pantalla estén actualizadas;
  *     debe llamarse después de renderizar o cuando cambie el layout (resize/visibility).
  *****************************************************************************************/
-function updateOverlayPosition(): void {
-  if (!screen || !camera || !renderer) return
-
-  // 1) Usa el rect real del canvas (posición y tamaño en la página)
-  const rect = renderer.domElement.getBoundingClientRect()
-  const widthHalf = rect.width / 2
-  const heightHalf = rect.height / 2
-
-  // 2) Proyecta centro y esquinas de la pantalla 3D
-  const center = new THREE.Vector3(0, 0, 0)
-  const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0)
-  const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0)
-
-  screen.updateMatrixWorld()
-  center.applyMatrix4(screen.matrixWorld).project(camera)
-  topLeft.applyMatrix4(screen.matrixWorld).project(camera)
-  bottomRight.applyMatrix4(screen.matrixWorld).project(camera)
-
-  // 3) Convierte a píxeles relativos al canvas
-  const cx = center.x * widthHalf + widthHalf
-  const cy = -center.y * heightHalf + heightHalf
-
-  const x1 = topLeft.x * widthHalf + widthHalf
-  const y1 = -topLeft.y * heightHalf + heightHalf
-  const x2 = bottomRight.x * widthHalf + widthHalf
-  const y2 = -bottomRight.y * heightHalf + heightHalf
-
-  const margin = 5
-  const pixelWidth = Math.max(0, Math.abs(x2 - x1) - margin)
-  const pixelHeight = Math.max(0, Math.abs(y2 - y1) - 3 * margin)
-
-  // 4) Posiciona el overlay en coordenadas de página sumando rect.left/top
-  const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
-  if (overlay) {
-    overlay.style.position = 'absolute'
-    overlay.style.left = `${rect.left + cx}px`
-    overlay.style.top = `${rect.top + cy}px`
-    overlay.style.width = `${pixelWidth}px`
-    overlay.style.height = `${pixelHeight}px`
-    overlay.style.transform = 'translate(-50%, -50%)'
-  }
+function updateOverlayPosition() {
+    if (!screen || !camera || !renderer)
+        return;
+    // 1) Usa el rect real del canvas (posición y tamaño en la página)
+    const rect = renderer.domElement.getBoundingClientRect();
+    const widthHalf = rect.width / 2;
+    const heightHalf = rect.height / 2;
+    // 2) Proyecta centro y esquinas de la pantalla 3D
+    const center = new THREE.Vector3(0, 0, 0);
+    const topLeft = new THREE.Vector3(-screenWidth / 2, screenHeight / 2, 0);
+    const bottomRight = new THREE.Vector3(screenWidth / 2, -screenHeight / 2, 0);
+    screen.updateMatrixWorld();
+    center.applyMatrix4(screen.matrixWorld).project(camera);
+    topLeft.applyMatrix4(screen.matrixWorld).project(camera);
+    bottomRight.applyMatrix4(screen.matrixWorld).project(camera);
+    // 3) Convierte a píxeles relativos al canvas
+    const cx = center.x * widthHalf + widthHalf;
+    const cy = -center.y * heightHalf + heightHalf;
+    const x1 = topLeft.x * widthHalf + widthHalf;
+    const y1 = -topLeft.y * heightHalf + heightHalf;
+    const x2 = bottomRight.x * widthHalf + widthHalf;
+    const y2 = -bottomRight.y * heightHalf + heightHalf;
+    const margin = 5;
+    const pixelWidth = Math.max(0, Math.abs(x2 - x1) - margin);
+    const pixelHeight = Math.max(0, Math.abs(y2 - y1) - 3 * margin);
+    // 4) Posiciona el overlay en coordenadas de página sumando rect.left/top
+    const overlay = document.getElementById('screen-overlay');
+    if (overlay) {
+        overlay.style.position = 'absolute';
+        overlay.style.left = `${rect.left + cx}px`;
+        overlay.style.top = `${rect.top + cy}px`;
+        overlay.style.width = `${pixelWidth}px`;
+        overlay.style.height = `${pixelHeight}px`;
+        overlay.style.transform = 'translate(-50%, -50%)';
+    }
 }
 /*****************************************************************************************
  * FUNCTION: updateOverlayMobilePosition
@@ -724,17 +582,18 @@ function updateOverlayPosition(): void {
  *              - Posiciona el overlay como fixed en (0,0) y elimina transforms.
  *              - Define ancho/alto iguales a las dimensiones de la ventana.
  *****************************************************************************************/
-function updateOverlayMobilePosition(): void {
-  const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
-  if (!overlay) return
-  const w = window.innerWidth
-  const h = window.innerHeight
-  overlay.style.position = 'fixed'
-  overlay.style.left = `${0}px`
-  overlay.style.top = `${0}px`
-  overlay.style.width = `${w}px`
-  overlay.style.height = `${h}px`
-  overlay.style.transform = 'none'
+function updateOverlayMobilePosition() {
+    const overlay = document.getElementById('screen-overlay');
+    if (!overlay)
+        return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    overlay.style.position = 'fixed';
+    overlay.style.left = `${0}px`;
+    overlay.style.top = `${0}px`;
+    overlay.style.width = `${w}px`;
+    overlay.style.height = `${h}px`;
+    overlay.style.transform = 'none';
 }
 /*****************************************************************************************
  * FUNCTION: animateSecondZoom
@@ -755,26 +614,25 @@ function updateOverlayMobilePosition(): void {
  * PARÁMETROS:
  *   - elapsedTime (Número): Segundos desde el inicio de la animación de introducción.
  *****************************************************************************************/
-function animateSecondZoom(elapsedTime: number): void {
-  if (!endPos2) return
-  if (secondZoomStartedAt === null) return
-
-  const t = Math.min((elapsedTime - secondZoomStartedAt) / mobileSecondZoomDuration, 1)
-  const from = endPos
-  const to = endPos2
-
-  camera.position.lerpVectors(from, to, t)
-  camera.fov = endFov + (mobileSecondZoomFov - endFov) * t
-  camera.updateProjectionMatrix()
-  camera.lookAt(tabletGroup.position)
-
-  if (isMobile && t >= 1 && !overlayShown) {
-    setTimeout(() => {
-      updateOverlayMobilePosition()
-      showTabletContent.value = true
-      overlayShown = true
-    }, 400)
-  }
+function animateSecondZoom(elapsedTime) {
+    if (!endPos2)
+        return;
+    if (secondZoomStartedAt === null)
+        return;
+    const t = Math.min((elapsedTime - secondZoomStartedAt) / mobileSecondZoomDuration, 1);
+    const from = endPos;
+    const to = endPos2;
+    camera.position.lerpVectors(from, to, t);
+    camera.fov = endFov + (mobileSecondZoomFov - endFov) * t;
+    camera.updateProjectionMatrix();
+    camera.lookAt(tabletGroup.position);
+    if (isMobile && t >= 1 && !overlayShown) {
+        setTimeout(() => {
+            updateOverlayMobilePosition();
+            showTabletContent.value = true;
+            overlayShown = true;
+        }, 400);
+    }
 }
 /*****************************************************************************************
  * FUNCTION: startAnimation
@@ -820,70 +678,65 @@ function animateSecondZoom(elapsedTime: number): void {
  *   - En escritorio, ahora `updateOverlayPosition()` se invoca en cada frame para prevenir
  *     desalineaciones al cambiar de pestaña o si se pausa la animación.
  *****************************************************************************************/
-function startAnimation(time: DOMHighResTimeStamp): void {
-  if (startTime === null) startTime = time
-  const elapsedTime: number = (time - startTime) / 1000
-
-  // 1) Rotación + primer zoom
-  animateTabletRotation(elapsedTime, durationRotation)
-  if (rotationStartedAt === null) rotationStartedAt = elapsedTime
-  animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom)
-
-  // 2) Disparo de overlay y segundo zoom (solo mobile)
-  if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
-    if (!isMobile) {
-      // proyección inicial y muestra del contenido en desktop
-      updateOverlayPosition()
-      showTabletContent.value = true
-      overlayShown = true
-    } else if (!secondZoomTriggered) {
-      const p = getScreenWorldPos()
-      endPos2 = new THREE.Vector3(p.x, p.y, p.z + mobileSecondZoomMargin)
-      secondZoomStartedAt = elapsedTime
-      secondZoomTriggered = true
+function startAnimation(time) {
+    if (startTime === null)
+        startTime = time;
+    const elapsedTime = (time - startTime) / 1000;
+    // 1) Rotación + primer zoom
+    animateTabletRotation(elapsedTime, durationRotation);
+    if (rotationStartedAt === null)
+        rotationStartedAt = elapsedTime;
+    animateCameraZoom(elapsedTime, rotationStartedAt, durationCameraZoom);
+    // 2) Disparo de overlay y segundo zoom (solo mobile)
+    if (!overlayShown && elapsedTime > totalDuration - recorteTiempoParaMostrarLaPantalla) {
+        if (!isMobile) {
+            // proyección inicial y muestra del contenido en desktop
+            updateOverlayPosition();
+            showTabletContent.value = true;
+            overlayShown = true;
+        }
+        else if (!secondZoomTriggered) {
+            const p = getScreenWorldPos();
+            endPos2 = new THREE.Vector3(p.x, p.y, p.z + mobileSecondZoomMargin);
+            secondZoomStartedAt = elapsedTime;
+            secondZoomTriggered = true;
+        }
     }
-  }
-
-  // 3) Segundo zoom (si está activo - mobile)
-  if (isMobile && secondZoomTriggered && endPos2) {
-    animateSecondZoom(elapsedTime)
-  }
-
-  // 4) Render SIEMPRE al final
-  if (!renderer || !scene || !camera) {
-    animationId = requestAnimationFrame(startAnimation)
-    return
-  }
-  renderer.render(scene, camera)
-
-  // ➜ Reproyecta el overlay en cada frame (desktop)
-  if (!isMobile && overlayShown) {
-    updateOverlayPosition()
-  }
-
-  // 5) Condición de loop
-  const stillInIntro = elapsedTime < totalDuration
-  const inSecondZoom =
-    isMobile &&
-    secondZoomTriggered &&
-    secondZoomStartedAt !== null &&
-    elapsedTime - secondZoomStartedAt < mobileSecondZoomDuration
-
-  if (stillInIntro || inSecondZoom) {
-    animationId = requestAnimationFrame(startAnimation)
-  } else {
-    // Animación terminó: última proyección de seguridad (desktop)
-    if (!isMobile) {
-      updateOverlayPosition()
-      setTimeout(updateOverlayPosition, 0)
+    // 3) Segundo zoom (si está activo - mobile)
+    if (isMobile && secondZoomTriggered && endPos2) {
+        animateSecondZoom(elapsedTime);
     }
-  }
+    // 4) Render SIEMPRE al final
+    if (!renderer || !scene || !camera) {
+        animationId = requestAnimationFrame(startAnimation);
+        return;
+    }
+    renderer.render(scene, camera);
+    // ➜ Reproyecta el overlay en cada frame (desktop)
+    if (!isMobile && overlayShown) {
+        updateOverlayPosition();
+    }
+    // 5) Condición de loop
+    const stillInIntro = elapsedTime < totalDuration;
+    const inSecondZoom = isMobile &&
+        secondZoomTriggered &&
+        secondZoomStartedAt !== null &&
+        elapsedTime - secondZoomStartedAt < mobileSecondZoomDuration;
+    if (stillInIntro || inSecondZoom) {
+        animationId = requestAnimationFrame(startAnimation);
+    }
+    else {
+        // Animación terminó: última proyección de seguridad (desktop)
+        if (!isMobile) {
+            updateOverlayPosition();
+            setTimeout(updateOverlayPosition, 0);
+        }
+    }
 }
-
 onBeforeMount(async () => {
-  await assets.preloadInitIcons()
-  showPreloader.value = false
-})
+    await assets.preloadInitIcons();
+    showPreloader.value = false;
+});
 /*****************************************************************************************
  * LIFECYCLE HOOK: onMounted
  * AUTHOR: Muriel Vitale
@@ -909,17 +762,17 @@ onBeforeMount(async () => {
  *                 - Establecer `showPreloader` en falso.
  *****************************************************************************************/
 onMounted(async () => {
-  await new Promise<void>((resolve) => {
-    if (document.readyState === 'complete') {
-      resolve()
-    } else {
-      window.addEventListener('load', () => resolve(), { once: true })
-    }
-  })
-
-  isLoading.value = false
-  showPreloader.value = false
-})
+    await new Promise((resolve) => {
+        if (document.readyState === 'complete') {
+            resolve();
+        }
+        else {
+            window.addEventListener('load', () => resolve(), { once: true });
+        }
+    });
+    isLoading.value = false;
+    showPreloader.value = false;
+});
 /*****************************************************************************************
  * LIFECYCLE HOOK: onBeforeUnmount
  * AUTHOR: Muriel Vitale.
@@ -936,268 +789,186 @@ onMounted(async () => {
  *              - Libera los recursos del renderizador con `renderer.dispose()`.
  *              - Elimina el canvas WebGL del DOM si fue añadido.
  *****************************************************************************************/
-onBeforeUnmount((): void => {
-  if (animationId !== undefined) cancelAnimationFrame(animationId)
-  renderer?.dispose()
-  const el = container.value
-  if (el && renderer?.domElement && renderer.domElement.parentElement === el) {
-    el.removeChild(renderer.domElement)
-  }
-})
-
-provide('data', data)
-</script>
-
-<style scoped lang="scss">
-@use 'sass:color';
-@use '@/styles/colors' as *;
-
-.preloader-fade-enter-active,
-.preloader-fade-leave-active {
-  transition:
-    opacity 1.2s ease,
-    transform 1.2s ease;
+onBeforeUnmount(() => {
+    if (animationId !== undefined)
+        cancelAnimationFrame(animationId);
+    renderer?.dispose();
+    const el = container.value;
+    if (el && renderer?.domElement && renderer.domElement.parentElement === el) {
+        el.removeChild(renderer.domElement);
+    }
+});
+provide('data', data);
+debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
+const __VLS_ctx = {};
+let __VLS_elements;
+let __VLS_components;
+let __VLS_directives;
+/** @type {__VLS_StyleScopedClasses['startButton']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot1']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot2']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot3']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot4']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot5']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot6']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot7']} */ ;
+// CSS variable injection 
+// CSS variable injection end 
+const __VLS_0 = {}.transition;
+/** @type {[typeof __VLS_components.Transition, typeof __VLS_components.transition, typeof __VLS_components.Transition, typeof __VLS_components.transition, ]} */ ;
+// @ts-ignore
+Transition;
+// @ts-ignore
+const __VLS_1 = __VLS_asFunctionalComponent(__VLS_0, new __VLS_0({
+    ...{ 'onAfterLeave': {} },
+    name: "preloader-fade",
+}));
+const __VLS_2 = __VLS_1({
+    ...{ 'onAfterLeave': {} },
+    name: "preloader-fade",
+}, ...__VLS_functionalComponentArgsRest(__VLS_1));
+let __VLS_4;
+let __VLS_5;
+const __VLS_6 = ({ afterLeave: {} },
+    { onAfterLeave: (__VLS_ctx.onPreloaderLeave) });
+const { default: __VLS_7 } = __VLS_3.slots;
+// @ts-ignore
+[onPreloaderLeave,];
+if (__VLS_ctx.showPreloader && !__VLS_ctx.assets.initIconsReady) {
+    // @ts-ignore
+    [showPreloader, assets,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "preloader" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "preloader-inner" },
+        ...{ class: ({ 'fade-out-dots': !__VLS_ctx.isLoading }) },
+    });
+    // @ts-ignore
+    [isLoading,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "dot-loader" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot1" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot2" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot3" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot4" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot5" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot6" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "dot dot7" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.p, __VLS_elements.p)({
+        ...{ class: "loading-text" },
+    });
 }
-
-.preloader-fade-enter-from,
-.preloader-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+var __VLS_3;
+__VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+    ref: "container",
+    ...{ class: "containerPrincipal" },
+    ...{ style: {} },
+});
+/** @type {typeof __VLS_ctx.container} */ ;
+// @ts-ignore
+[container,];
+if (!__VLS_ctx.showPreloader && __VLS_ctx.startContainer) {
+    // @ts-ignore
+    [showPreloader, startContainer,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "start-screen" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ onClick: (__VLS_ctx.start) },
+        ...{ class: "startButton" },
+    });
+    // @ts-ignore
+    [start,];
 }
-
-.containerPrincipal {
-  width: 100%;
-  height: 100vh;
-  position: relative;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+__VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+    id: "screen-overlay",
+    ...{ class: (__VLS_ctx.overlayClass) },
+});
+// @ts-ignore
+[overlayClass,];
+const __VLS_8 = {}.transition;
+/** @type {[typeof __VLS_components.Transition, typeof __VLS_components.transition, typeof __VLS_components.Transition, typeof __VLS_components.transition, ]} */ ;
+// @ts-ignore
+Transition;
+// @ts-ignore
+const __VLS_9 = __VLS_asFunctionalComponent(__VLS_8, new __VLS_8({
+    name: "fade",
+    appear: true,
+}));
+const __VLS_10 = __VLS_9({
+    name: "fade",
+    appear: true,
+}, ...__VLS_functionalComponentArgsRest(__VLS_9));
+const { default: __VLS_12 } = __VLS_11.slots;
+if (__VLS_ctx.showTabletContent) {
+    // @ts-ignore
+    [showTabletContent,];
+    /** @type {[typeof TabletContent, ]} */ ;
+    // @ts-ignore
+    const __VLS_13 = __VLS_asFunctionalComponent(TabletContent, new TabletContent({}));
+    const __VLS_14 = __VLS_13({}, ...__VLS_functionalComponentArgsRest(__VLS_13));
 }
-
-.start-screen {
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.startButton {
-  position: relative;
-  color: $lightViolet;
-  border: 1px solid $lightViolet;
-  background-color: transparent;
-  width: fit-content;
-  height: fit-content;
-  margin: auto;
-  padding: 0.6rem 1.5rem;
-  font-family:
-    'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-  font-size: 1.5rem;
-  cursor: pointer;
-  user-select: none;
-  border-radius: 5rem;
-  transition:
-    transform 0.2s ease,
-    background-color 0.3s ease;
-  animation: pulseGradient 1.5s ease-in-out infinite;
-}
-.startButton:hover {
-  transform: scale(1.05);
-  background-color: rgba($lightViolet, 0.08);
-}
-@keyframes pulseGradient {
-  0%,
-  100% {
-    color: $lightViolet;
-    border-color: $lightViolet;
-    box-shadow: 0 0 6px rgba($lightViolet, 0.3);
-  }
-  50% {
-    color: $brilliantMagenta;
-    border-color: $brilliantMagenta;
-    box-shadow: 0 0 12px rgba($brilliantMagenta, 0.6);
-  }
-}
-
-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.preloader {
-  position: absolute;
-  inset: 0;
-  background: $GreyBlue;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  font-family: sans-serif;
-  transition: background-color 0.4s ease;
-}
-
-.loading-text {
-  font-family:
-    'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-  font-size: 1rem;
-  color: $brilliantBlue;
-  animation: pulseLoading 1.5s ease-in-out infinite;
-}
-
-.preloader-inner {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.dot-loader {
-  display: flex;
-  gap: 0.65rem;
-  margin-bottom: 1rem;
-}
-
-.dot {
-  width: 0.3rem;
-  height: 0.3rem;
-  border-radius: 50%;
-  animation: bounce 1.2s infinite ease-in-out alternate;
-  position: relative;
-}
-
-.dot1 {
-  animation-delay: 0.2s;
-}
-.dot2 {
-  animation-delay: 0.4s;
-}
-.dot3 {
-  animation-delay: 0.6s;
-}
-.dot4 {
-  animation-delay: 0.67s;
-}
-.dot5 {
-  animation-delay: 0.6s;
-}
-.dot6 {
-  animation-delay: 0.4s;
-}
-.dot7 {
-  animation-delay: 0.2s;
-}
-
-@keyframes bounce {
-  0% {
-    transform: translateY(0);
-    background-color: $lightViolet;
-  }
-  50% {
-    transform: translateY(-2.5rem);
-    background-color: $brilliantMagenta;
-  }
-  100% {
-    transform: translateY(0);
-    background-color: $lightViolet;
-  }
-}
-
-@keyframes pulseLoading {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-@keyframes pulseStartButton {
-  0%,
-  100% {
-    color: $lightViolet;
-  }
-  50% {
-    color: $brilliantMagenta;
-  }
-}
-
-.fade-out-dots .dot {
-  animation: none !important;
-  opacity: 0;
-  transition: opacity 5s ease;
-}
-.fade-out-dots .dot1 {
-  transition-delay: 0s;
-}
-.fade-out-dots .dot2 {
-  transition-delay: 0.1s;
-}
-.fade-out-dots .dot3 {
-  transition-delay: 0.2s;
-}
-.fade-out-dots .dot4 {
-  transition-delay: 3s;
-}
-.fade-out-dots .dot5 {
-  transition-delay: 0.2s;
-}
-.fade-out-dots .dot6 {
-  transition-delay: 0.1s;
-}
-.fade-out-dots .dot7 {
-  transition-delay: 0s;
-}
-
-#webgl-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.overlay {
-  position: absolute;
-  top: -9999px;
-  left: -9999px;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
-  z-index: 10;
-  width: 300px;
-  height: 200px;
-  background: rgba(12, 12, 12, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.overlay-shadow {
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
-}
-
-.screen-overlay {
-  position: absolute;
-  transform: translate(-50%, -50%);
-}
-
-:deep(.fade-enter-from),
-:deep(.fade-leave-to) {
-  opacity: 0;
-}
-
-:deep(.fade-enter-active),
-:deep(.fade-leave-active),
-:deep(.fade-appear-active) {
-  transition: opacity 1.5s ease;
-}
-
-:deep(.fade-appear-from) {
-  opacity: 0;
-}
-</style>
+var __VLS_11;
+/** @type {__VLS_StyleScopedClasses['preloader']} */ ;
+/** @type {__VLS_StyleScopedClasses['preloader-inner']} */ ;
+/** @type {__VLS_StyleScopedClasses['fade-out-dots']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot-loader']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot1']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot2']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot3']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot4']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot5']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot6']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot7']} */ ;
+/** @type {__VLS_StyleScopedClasses['loading-text']} */ ;
+/** @type {__VLS_StyleScopedClasses['containerPrincipal']} */ ;
+/** @type {__VLS_StyleScopedClasses['start-screen']} */ ;
+/** @type {__VLS_StyleScopedClasses['startButton']} */ ;
+var __VLS_dollars;
+const __VLS_self = (await import('vue')).defineComponent({
+    setup: () => ({
+        TabletContent: TabletContent,
+        assets: assets,
+        isLoading: isLoading,
+        showPreloader: showPreloader,
+        startContainer: startContainer,
+        container: container,
+        showTabletContent: showTabletContent,
+        overlayClass: overlayClass,
+        onPreloaderLeave: onPreloaderLeave,
+        start: start,
+    }),
+});
+export default (await import('vue')).defineComponent({});
+; /* PartiallyEnd: #4569/main.vue */

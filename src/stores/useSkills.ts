@@ -7,9 +7,9 @@ type SkillVM = { name: string; logo: string | null; categories: string[] }
 
 function resolveLogo(raw: string | null) {
   if (!raw) return null
-  if (raw.startsWith('/src/assets/images/SkillsLogos/')) {
-    return raw.replace('/src/assets/images/SkillsLogos/', '/assets/SkillsLogos/')
-  }
+  // if (raw.startsWith('/src/assets/images/SkillsLogos/')) {
+  //   return raw.replace('/src/assets/images/SkillsLogos/', '/assets/SkillsLogos/')
+  // }
   return raw
 }
 

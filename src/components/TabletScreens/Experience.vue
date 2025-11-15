@@ -20,7 +20,7 @@
           <i @click="go('About')" class="bi bi-person-fill"></i>
           <a
             v-if="linkedinUrl"
-            class="m-0 p-0"
+            class="m-0 p-0 text-decoration-none"
             :href="linkedinUrl"
             target="_blank"
             rel="noopener noreferrer"

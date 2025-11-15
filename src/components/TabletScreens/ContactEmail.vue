@@ -1,6 +1,9 @@
 <!-- src/components/ContactEmail.vue -->
 <template>
-  <div class="container-fluid contactApplication m-0 p-0">
+  <div
+    class="container-fluid contactApplication m-0 p-0"
+    :style="{ backgroundImage: `url(${assets.icons.contactwallpaper})` }"
+  >
     <!-- Tools -->
     <div class="tools">
       <img class="logoPrinc" :src="appLogoUrl" alt="" />
@@ -107,7 +110,9 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRedirectStore } from '@/stores/useRedirect'
 import { useContactChannelsStore } from '@/stores/useContactChannels'
 import { Popover } from 'bootstrap'
+import { useAssetsPreload } from '@/stores/useAssetsPreload'
 
+const assets = useAssetsPreload()
 const MIN_LEN: number = 25 // Longitud minima del mensaje permitida
 const MAX_LEN: number = 500 // Longitud maxima del mensaje permitida
 const API_URL = import.meta.env.VITE_MAIL_ENDPOINT as string
@@ -356,7 +361,7 @@ function scrollToBottom() {
   width: 40%;
 }
 .contactApplication {
-  background-image: url('@/assets/textures/wallpaperContact.png');
+  // background-image: url('@/assets/textures/wallpaperContact.png');
   pointer-events: auto;
   width: 100%;
   height: 100%;

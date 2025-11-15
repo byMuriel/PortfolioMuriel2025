@@ -47,5 +47,8 @@ export const useRedirectStore = defineStore('redirect', {
           this.current = 'Init'
       }
     },
+    goInit() {
+      this.current = 'Init'
+    },
   },
 })

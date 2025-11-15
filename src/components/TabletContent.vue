@@ -7,11 +7,19 @@
       class="back-button"
     />
     <component :is="currentView" @change-screen="handleChangeScreen" />
+    <!-- Toast “Press again to exit” -->
+    <div
+      v-if="showExitHint"
+      class="position-fixed bottom-0 start-50 translate-middle-x mb-3"
+      style="z-index: 1050"
+    >
+      <div class="bg-dark text-white px-3 py-2 rounded-3 shadow">Press again to exit</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, shallowRef, type Ref, type ShallowRef, watch } from 'vue'
+import { ref, onBeforeUnmount, onMounted, shallowRef, type Ref, type ShallowRef, watch } from 'vue'
 import { useRedirectStore, type ScreenName } from '@/stores/useRedirect'
 import { useLastScreen } from '@/stores/useLastScreen'
 import { useAppLogosStore } from '@/stores/useAppLogos'
@@ -39,6 +47,10 @@ const skillsStore = useSkillsStore()
 const projectsStore = useProjectsStore()
 const experiencesStore = useExperiencesStore()
 const contactChannelsStore = useContactChannelsStore()
+
+let popHandler: ((e: PopStateEvent) => void) | null = null
+let lastBackTs = 0
+
 const views: Record<ScreenName, Component> = {
   Init,
   About,
@@ -67,6 +79,13 @@ const screen: Ref<HTMLDivElement | null> = ref(null)
 const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
+const showExitHint = ref(false)
+let hideHintTimer: number | null = null
+function hintExitOnce(ms = 1500) {
+  showExitHint.value = true
+  if (hideHintTimer) window.clearTimeout(hideHintTimer)
+  hideHintTimer = window.setTimeout(() => (showExitHint.value = false), ms)
+}
 
 /*****************************************************************************************
  * WATCH: redirectStore.current
@@ -110,6 +129,42 @@ onMounted(async () => {
     experiencesStore.preloadAssets(),
     contactChannelsStore.load(),
   ])
+  // Empuja un estado "ancla" para consumir el primer back sin salir
+  history.pushState({ spa: true }, '', location.href)
+
+  popHandler = () => {
+    const now = Date.now()
+
+    // Si NO estamos en Init → forzar Init y reponer estado
+    if (redirectStore.current !== 'Init') {
+      redirectStore.goInit()
+      history.pushState({ spa: true }, '', location.href)
+      return
+    }
+
+    // Ya estamos en Init:
+    //  - Primer atrás → mostrar aviso y reponer estado (no salimos)
+    //  - Segundo atrás (rápido) → permitir salir (no reponemos el estado)
+    if (now - lastBackTs < 1500) {
+      // 2do toque: permitir salida
+      // Importante: quitar el listener para no interferir con el cierre
+      if (popHandler) window.removeEventListener('popstate', popHandler)
+      // No hacemos pushState aquí: dejamos que el SO/navegador salga
+      return
+    }
+
+    // 1er toque: avisar y bloquear salida reponiendo el estado
+    lastBackTs = now
+    console.log('[BACK] Hint exit once')
+    hintExitOnce(1500)
+    history.pushState({ spa: true }, '', location.href)
+  }
+
+  window.addEventListener('popstate', popHandler)
+})
+onBeforeUnmount(() => {
+  if (popHandler) window.removeEventListener('popstate', popHandler)
+  if (hideHintTimer) window.clearTimeout(hideHintTimer)
 })
 defineExpose({
   screen,

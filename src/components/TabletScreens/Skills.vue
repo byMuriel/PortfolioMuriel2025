@@ -36,6 +36,7 @@
         </div>
       </div>
     </div>
+
     <!-- Skills Content -->
     <div v-for="cat in displayCategories" :key="cat" class="categoryBlock">
       <p class="categoryTitle">{{ cat }}</p>
@@ -43,13 +44,14 @@
       <Transition name="fade-left">
         <button
           class="arrowBtn left"
-          v-show="arrows[cat] && arrows[cat].left && atRight[cat]"
+          :style="{ display: arrows[cat] && arrows[cat].left ? 'grid' : 'none' }"
           @click="nudge(cat, -1)"
           aria-label="Desplazar a la izquierda"
         >
           ‹
         </button>
       </Transition>
+
       <!-- Skills categories -->
       <div
         class="containerSkills"
@@ -57,7 +59,7 @@
           'is-short': byCategory(cat).length <= 2,
           'no-arrows': arrows[cat] && !arrows[cat].left && !arrows[cat].right,
         }"
-        :ref="(el) => registerScroller(cat, el as HTMLDivElement)"
+        :ref="(el) => registerScroller(cat, el as HTMLDivElement | null)"
       >
         <div v-for="skill in byCategory(cat)" :key="skill.name" class="m-0 p-0 skillCard">
           <img :src="skill.logo ?? FALLBACK_LOGO" :alt="skill.name" class="imgLogo" />
@@ -78,6 +80,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'Skills' })
+
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useAppLogosStore } from '@/stores/useAppLogos'
 import { useSkillsStore } from '@/stores/useSkills'
@@ -94,18 +97,19 @@ let scrollers: Record<string, HTMLDivElement | null> = {}
 const arrows = ref<Record<string, Side>>({})
 const scheduled = new Map<string, number>()
 const atRight = ref<Record<string, boolean>>({})
+const touchedRight = ref<Record<string, boolean>>({})
 
 /*****************************************************************************************
- * WATCH: displayCategories
+ * WATCHER: displayCategories
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Watches for changes in the list of visible skill categories.
- *              - Waits for the DOM to update (`nextTick`).
- *              - Recalculates and updates the state of navigation arrows for each category.
+ * DESCRIPTION: Reacts to changes in the visible skill categories and refreshes arrow state.
+ *              - Waits for the DOM update with nextTick().
+ *              - Iterates all registered scrollers and calls scheduleArrows for each one.
  *
- * DESCRIPCIÓN: Observa los cambios en la lista de categorías visibles de habilidades.
- *              - Espera que el DOM se actualice (`nextTick`).
- *              - Recalcula y actualiza el estado de las flechas de navegación para cada
- *                categoría.
+ * DESCRIPCIÓN: Reacciona a cambios en las categorías visibles de skills y actualiza el
+ *              estado de las flechas.
+ *              - Espera a que el DOM se actualice con nextTick().
+ *              - Recorre todos los scrollers registrados y ejecuta scheduleArrows en cada uno.
  *****************************************************************************************/
 watch(displayCategories, async () => {
   await nextTick()
@@ -114,13 +118,14 @@ watch(displayCategories, async () => {
 /*****************************************************************************************
  * FUNCTION: onImgError
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Handles image loading errors by replacing the failed source with a default fallback image.
- *              - Removes the error handler to prevent infinite loops.
- *              - Sets a generic placeholder image when the original fails to load.
+ * DESCRIPTION: Handles image load failures by swapping the source for a fallback image.
+ *              - Removes the error handler to avoid infinite loops.
+ *              - Uses '/fallbacks/app-default.png' as the placeholder.
  *
- * DESCRIPCIÓN: Maneja los errores de carga de imágenes reemplazando la fuente fallida con una imagen por defecto.
- *              - Elimina el manejador de error para evitar bucles infinitos.
- *              - Asigna una imagen genérica de respaldo cuando la original falla.
+ * DESCRIPCIÓN: Maneja fallos de carga de imágenes reemplazando la fuente por una imagen
+ *              de respaldo.
+ *              - Elimina el handler de error para evitar bucles infinitos.
+ *              - Usa '/fallbacks/app-default.png' como placeholder.
  *****************************************************************************************/
 function onImgError(e: Event) {
   const el = e.target as HTMLImageElement
@@ -130,11 +135,11 @@ function onImgError(e: Event) {
 /*****************************************************************************************
  * FUNCTION: go
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Redirects to another tablet view using the global redirect store.
- *              - Calls the `redirect` method with the given route key.
+ * DESCRIPTION: Redirects the user to a different app/route inside the tablet.
+ *              - Delegates navigation logic to the redirect store.
  *
- * DESCRIPCIÓN: Redirige a otra vista de la tablet usando el store global de redirección.
- *              - Llama al método `redirect` pasando la clave de ruta indicada.
+ * DESCRIPCIÓN: Redirige al usuario a otra app/ruta dentro de la tablet.
+ *              - Delega la lógica de navegación al store de redirecciones.
  *****************************************************************************************/
 function go(to: string) {
   useRedirectStore().redirect(to)
@@ -142,15 +147,17 @@ function go(to: string) {
 /*****************************************************************************************
  * FUNCTION: registerScroller
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Registers a scrollable container for a given skill category.
- *              - Adds a scroll event listener to track arrow visibility.
- *              - Stores a cleanup callback to remove the listener later.
- *              - Immediately schedules arrow visibility recalculation.
+ * DESCRIPTION: Registers a horizontal scroller element for a skill category.
+ *              - Stores the element in the scrollers map by category.
+ *              - Attaches a passive 'scroll' listener to recalculate arrow visibility.
+ *              - Saves a _cleanup function on the element to remove the listener later.
+ *              - Immediately calls scheduleArrows to set initial arrow state.
  *
- * DESCRIPCIÓN: Registra un contenedor desplazable para una categoría de habilidades.
- *              - Añade un listener de desplazamiento para controlar la visibilidad de las flechas.
- *              - Guarda una función de limpieza para eliminar el listener posteriormente.
- *              - Programa de inmediato el recálculo de la visibilidad de las flechas.
+ * DESCRIPCIÓN: Registra un contenedor desplazable horizontal para una categoría de skills.
+ *              - Guarda el elemento en el mapa scrollers bajo su categoría.
+ *              - Añade un listener 'scroll' en modo passive para recalcular las flechas.
+ *              - Guarda una función _cleanup en el elemento para quitar el listener luego.
+ *              - Llama a scheduleArrows de inmediato para definir el estado inicial.
  *****************************************************************************************/
 function registerScroller(cat: string, el: HTMLDivElement | null) {
   scrollers[cat] = el
@@ -165,13 +172,15 @@ function registerScroller(cat: string, el: HTMLDivElement | null) {
 /*****************************************************************************************
  * FUNCTION: nudge
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Scrolls the content of a category horizontally in the given direction.
- *              - Moves approximately 80% of the container’s visible width.
- *              - Updates arrow visibility after the scroll completes.
+ * DESCRIPTION: Scrolls the skills list horizontally in the given direction.
+ *              - Uses ~80% of the visible width as the scroll step.
+ *              - Applies smooth scrolling behavior.
+ *              - After a short delay, re-evaluates arrow visibility with scheduleArrows.
  *
- * DESCRIPCIÓN: Desplaza el contenido de una categoría horizontalmente en la dirección indicada.
- *              - Mueve aproximadamente el 80% del ancho visible del contenedor.
- *              - Actualiza la visibilidad de las flechas después del desplazamiento.
+ * DESCRIPCIÓN: Desplaza horizontalmente la lista de skills en la dirección indicada.
+ *              - Usa ~80% del ancho visible como paso de desplazamiento.
+ *              - Aplica un scroll suave (smooth).
+ *              - Tras un breve retraso, vuelve a evaluar las flechas con scheduleArrows.
  *****************************************************************************************/
 function nudge(cat: string, dir: 1 | -1) {
   const el = scrollers[cat]
@@ -184,15 +193,17 @@ function nudge(cat: string, dir: 1 | -1) {
 /*****************************************************************************************
  * FUNCTION: scheduleArrows
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Calculates and updates arrow visibility for a specific category.
- *              - Uses requestAnimationFrame to optimize updates.
- *              - Determines if the scroll is at the start or end.
- *              - Updates reactive state for both arrow visibility and “at right edge” tracking.
+ * DESCRIPTION: Schedules a recalculation of arrow visibility for a category scroller.
+ *              - Uses requestAnimationFrame to batch DOM reads/writes efficiently.
+ *              - Detects if there is horizontal overflow; if not, hides both arrows.
+ *              - Determines if the user is at the start or end of the scroll range.
+ *              - Updates the arrows reactive map and the atRight flag accordingly.
  *
- * DESCRIPCIÓN: Calcula y actualiza la visibilidad de las flechas para una categoría específica.
- *              - Usa requestAnimationFrame para optimizar las actualizaciones.
- *              - Determina si el desplazamiento está al inicio o al final.
- *              - Actualiza el estado reactivo tanto de las flechas como del borde derecho alcanzado.
+ * DESCRIPCIÓN: Programa el recálculo de la visibilidad de flechas para un scroller.
+ *              - Usa requestAnimationFrame para agrupar lecturas/escrituras de DOM.
+ *              - Detecta si hay overflow horizontal; si no, oculta ambas flechas.
+ *              - Determina si el usuario está al inicio o al final del rango de scroll.
+ *              - Actualiza el mapa reactivo arrows y la bandera atRight según corresponda.
  *****************************************************************************************/
 function scheduleArrows(cat: string) {
   if (scheduled.has(cat)) return
@@ -203,20 +214,36 @@ function scheduleArrows(cat: string) {
   const id = requestAnimationFrame(() => {
     scheduled.delete(cat)
 
-    const max = Math.max(0, el.scrollWidth - el.clientWidth)
-    const EPS = 1
-    const atStart = el.scrollLeft <= EPS
-    const atEnd = el.scrollLeft >= max - EPS
+    const scrollWidth = el.scrollWidth
+    const clientWidth = el.clientWidth
+    const scrollLeft = el.scrollLeft
 
-    // ↳ actualiza flechas
-    const next = { left: max > 0 && !atStart, right: max > 0 && !atEnd }
+    const EPS_START = 80
+    const EPS_END = 2
+
+    const max = Math.max(0, scrollWidth - clientWidth)
+    const hasOverflow = max > EPS_END
+
+    if (!hasOverflow) {
+      arrows.value[cat] = { left: false, right: false }
+      atRight.value[cat] = false
+      return
+    }
+
+    const atStart = scrollLeft <= EPS_START
+    const atEnd = scrollLeft >= max - EPS_END
+
+    const next = {
+      left: !atStart,
+      right: !atEnd,
+    }
+
     const prev = arrows.value[cat]
     if (!prev || prev.left !== next.left || prev.right !== next.right) {
       arrows.value[cat] = next
     }
 
-    // ↳ guarda “estoy al borde derecho” por categoría
-    if (atRight.value[cat] !== atEnd) atRight.value[cat] = atEnd
+    atRight.value[cat] = atEnd
   })
 
   scheduled.set(cat, id)
@@ -224,30 +251,30 @@ function scheduleArrows(cat: string) {
 /*****************************************************************************************
  * LIFECYCLE: onMounted
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Initializes the store data and ensures DOM readiness before rendering arrows.
- *              - Loads store data only if not already loaded.
- *              - Waits for the next DOM update cycle.
+ * DESCRIPTION: Initializes the skills module when the component is mounted.
+ *              - Loads the skills store only if the data is not fresh.
+ *              - Waits for the next DOM tick before allowing scroll/arrow logic to run.
  *
- * DESCRIPCIÓN: Inicializa los datos del store y asegura que el DOM esté listo antes de renderizar las flechas.
- *              - Carga los datos del store solo si aún no se han cargado.
- *              - Espera el siguiente ciclo de actualización del DOM.
+ * DESCRIPCIÓN: Inicializa el módulo de skills cuando el componente se monta.
+ *              - Carga el store de skills solo si los datos no están frescos.
+ *              - Espera al siguiente tick del DOM antes de permitir la lógica de scroll/flechas.
  *****************************************************************************************/
 onMounted(async () => {
   if (!store.isFresh) {
-    void store.load()
+    await store.load()
   }
   await nextTick()
 })
 /*****************************************************************************************
  * LIFECYCLE: onBeforeUnmount
  * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Cleans up event listeners and scroll observers before component destruction.
- *              - Iterates over all registered scrollers.
- *              - Invokes each stored cleanup function to remove event listeners.
+ * DESCRIPTION: Cleans up resources before the component is destroyed.
+ *              - Iterates all registered scrollers and calls their _cleanup function
+ *                (if present) to remove scroll listeners and avoid memory leaks.
  *
- * DESCRIPCIÓN: Limpia los listeners de eventos y observadores de scroll antes de destruir el componente.
- *              - Itera sobre todos los scrollers registrados.
- *              - Ejecuta cada función de limpieza almacenada para eliminar los listeners.
+ * DESCRIPCIÓN: Libera recursos antes de que el componente sea destruido.
+ *              - Recorre todos los scrollers registrados y ejecuta su función _cleanup
+ *                (si existe) para quitar los listeners de scroll y evitar fugas de memoria.
  *****************************************************************************************/
 onBeforeUnmount(() => {
   Object.values(scrollers).forEach((el) => {
@@ -477,9 +504,6 @@ defineExpose({ nudge, registerScroller })
   }
 }
 @media (hover: none) and (pointer: coarse), (max-width: 768px) {
-  .arrowBtn {
-    display: none !important;
-  }
   .containerSkills {
     overflow-x: auto;
     overflow-y: hidden;

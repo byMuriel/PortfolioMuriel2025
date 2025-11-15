@@ -43,7 +43,13 @@
         <i class="bi bi-chat-quote-fill" style="font-size: 1.5rem; color: grey"></i>
         <p class="textIcon">Contact</p>
       </span>
-      <a class="m-0 p-0" :href="linkLinkedIn" target="_blank" rel="noopener noreferrer">
+      <a
+        v-if="linkedInUrl"
+        class="m-0 p-0 text-decoration-none"
+        :href="linkedInUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         <PillButton
           class="toolButton"
           replaceClass="bluePill"
@@ -61,11 +67,7 @@
           {{ AboutContent.intro }}
           <!-- <span class="font07rem">(She/Her)</span> -->
         </h1>
-        <img
-          class="verificationImg m-0 p-0"
-          src="/src/assets/images/AboutMe/verification.png"
-          alt=""
-        />
+        <img class="verificationImg m-0 p-0" :src="assets.icons.verify" alt="Verification" />
         <div class="decoratorPlus text-center align-content-center m-0 p-0">
           <p class="plus">+</p>
         </div>
@@ -117,7 +119,9 @@ import { useRedirectStore } from '@/stores/useRedirect'
 import { useAboutStore } from '@/stores/useAbout'
 import { useContactChannelsStore } from '@/stores/useContactChannels'
 import PillButton from '@/components/CommonComponents/PillButton.vue'
+import { useAssetsPreload } from '@/stores/useAssetsPreload'
 
+const assets = useAssetsPreload()
 const appLogos = useAppLogosStore()
 const redirectStore = useRedirectStore()
 const store = useAboutStore()
@@ -159,7 +163,24 @@ const imgs = computed(() => ({
 }))
 const titles = computed<string[]>(() => store.about?.AboutMeTitles ?? [])
 const paragraphs = computed<string[]>(() => store.about?.AboutMe ?? [])
-const linkLinkedIn = computed(() => contactChannels.getLinkByCode('linkedin'))
+
+const linkedInUrl = computed(() => {
+  const raw = (
+    contactChannels.getLinkByCode('linkedin') ||
+    contactChannels.getLinkByCode('linkedn') || // ← fallback a la clave que ya te funciona
+    ''
+  ).trim()
+
+  if (!raw) return null
+  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+
+  try {
+    new URL(url) // valida
+    return url
+  } catch {
+    return null
+  }
+})
 
 /*****************************************************************************************
  * WATCH: titles
@@ -191,10 +212,11 @@ watch(
  *              - Carga los datos del store `about` si aún no están cargados.
  *              - Carga los datos del store `contactChannels` en caso necesario.
  *****************************************************************************************/
-onMounted(() => {
-  if (!store.isFresh) void store.load()
-  if (!contactChannels.isFresh) void contactChannels.load()
+onMounted(async () => {
+  if (!store.isFresh) await store.load()
+  if (!contactChannels.isFresh) await contactChannels.load() // ← antes era sin await
 })
+
 /*****************************************************************************************
  * FUNCTION: onImgError
  * AUTHOR: Muriel Vitale.

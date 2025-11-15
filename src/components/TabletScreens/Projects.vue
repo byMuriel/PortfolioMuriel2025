@@ -5,7 +5,7 @@
     <div class="tools-container">
       <img
         class="logoPrinc"
-        :src="logoProjects"
+        :src="safeUrl(logoProjects)"
         alt="Projects logo"
         decoding="async"
         loading="eager"
@@ -47,7 +47,7 @@
         <div class="m-o p-0">
           <h5 class="m-0 p-0 mb-1 fw-bold">{{ currentProject.name }}</h5>
           <p class="whiteSpace-text fs-7 m-0 p-0">{{ currentProject.description }}</p>
-          <a
+          <!-- <a
             class="text-anchor m-0 p-0"
             target="_blank"
             rel="noopener noreferrer"
@@ -57,7 +57,7 @@
                 : 'https://' + (currentProject.link ?? '')
             "
             ><span class="fw-bold text-light">Visit</span> {{ currentProject.link }}</a
-          >
+          > -->
           <br />
           <a
             class="text-anchor m-0 p-0 fw-bold"
@@ -133,7 +133,7 @@
             {{ rawProjects.name }}
           </h6>
           <div>
-            <p class="m-0 p-0">
+            <!-- <p class="m-0 p-0">
               <a
                 class="text-anchor m-0 p-0"
                 target="_blank"
@@ -146,7 +146,7 @@
               >
                 <span class="fw-bold text-light">Visit </span> {{ rawProjects.link }}
               </a>
-            </p>
+            </p> -->
 
             <p class="m-0 p-0">
               <a
@@ -243,6 +243,14 @@ const techList = computed(() => {
   return Object.entries(tech)
 })
 const projects: ComputedRef<ProjectDTO[]> = computed(() => projectsStore.projects)
+const defaultImg =
+  "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width='200' height='200'><rect width='100%' height='100%' fill='#222'/></svg>"
+
+const safeUrl = (u?: string) => {
+  if (!u) return defaultImg
+  const s = String(u).trim() // quita espacios/saltos de línea
+  return s.replace(/\s/g, '%20') // codifica espacios si los hay
+}
 
 /*****************************************************************************************
  * FUNCTION: onImgError

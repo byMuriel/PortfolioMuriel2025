@@ -1,6 +1,9 @@
 <!-- src/components/Contact.vue -->
 <template>
-  <div class="container-fluid contactApplication m-0 p-0">
+  <div
+    class="container-fluid contactApplication m-0 p-0"
+    :style="{ backgroundImage: `url(${assets.icons.contactwallpaper})` }"
+  >
     <!-- Tools -->
     <div class="tools">
       <img class="logoPrinc" :src="store.appLogoUrl" alt="Contact App Logo" />
@@ -69,6 +72,7 @@
 import { computed, type Ref, ref, type ComputedRef, watch, watchEffect, onMounted } from 'vue'
 import { useRedirectStore } from '@/stores/useRedirect'
 import { useContactChannelsStore } from '@/stores/useContactChannels'
+import { useAssetsPreload } from '@/stores/useAssetsPreload'
 
 type ContactVM = {
   name: string
@@ -77,6 +81,7 @@ type ContactVM = {
   goTo: string
   message?: string
 }
+const assets = useAssetsPreload()
 const screen: Ref<HTMLDivElement | null> = ref(null)
 const clicked = ref<boolean[]>([])
 const redirectStore = useRedirectStore()
@@ -259,10 +264,10 @@ i {
   border-radius: 50%;
   width: 3.5rem;
 }
-
 .contactCard {
   width: 97%;
-  background-color: rgba(255, 255, 255, 0.65);
+  height: 4rem;
+  background-color: rgba(255, 255, 255, 0.95);
   border-radius: 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   cursor: pointer;

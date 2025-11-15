@@ -1,5 +1,6 @@
 <!-- src/components/TabletScreens/Init.vue -->
 <template>
+  <img class="wallpaper" :src="assets.icons.wallpaper" alt="Init Wallpaper" />
   <div class="container-fluid initContent m-0 p-0">
     <div class="clock-container">
       <div class="clock-time">
@@ -9,36 +10,39 @@
         <p>{{ currentDate }}</p>
       </div>
     </div>
-    <div class="icon-grid mt-3">
+    <div class="icon-grid mt-3" v-if="assets.initIconsReady">
       <button class="btn app-button" @click="goTo('about')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/aboutIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.about" alt="About" />
       </button>
       <button class="btn app-button" @click="goTo('projects')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/projectsIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.projects" alt="Projects" />
       </button>
       <button class="btn app-button" @click="goTo('experience')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/experienceIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.experience" alt="Experience" />
       </button>
       <button class="btn app-button" @click="goTo('skills')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/skillsIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.skills" alt="Skills" />
       </button>
       <button class="btn app-button" @click="goTo('contact')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/contactIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.contact" alt="Contact" />
       </button>
       <button class="btn app-button" @click="goTo('blog')">
-        <img class="tamanioIconoApp" src="/src/assets/images/IconsApp/blogIcon.png" alt="" />
+        <img class="tamanioIconoApp" :src="assets.icons.blog" alt="Blog" />
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import { useAssetsPreload } from '@/stores/useAssetsPreload'
 import { useRouter } from 'vue-router'
 
 type RouteKey = 'skills' | 'experience' | 'about' | 'projects' | 'contact' | 'blog' | 'contactEmail'
 type ViewKey = 'Skills' | 'Experience' | 'About' | 'Projects' | 'Contact' | 'Blog' | 'ContactEmail'
+const assets = useAssetsPreload()
 const router = useRouter()
+
 const currentTime: Ref<string> = ref('')
 const currentDate: Ref<string> = ref('')
 const screen: Ref<HTMLDivElement | null> = ref(null)
@@ -199,20 +203,26 @@ onBeforeUnmount((): void => {
 </script>
 
 <style scoped>
-.initContent {
+.initWrapper {
   position: relative;
-  pointer-events: auto;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.wallpaper {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  box-sizing: border-box;
-  background-image: url('@/assets/textures/wallpaperTablet.png');
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: start;
-  align-items: center;
-  font-family: sans-serif;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+.initContent {
+  position: relative;
+  z-index: 1;
 }
 .clock-container {
   width: 90%;
