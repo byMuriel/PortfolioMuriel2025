@@ -6,6 +6,26 @@ import './assets/main.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 
+/* -------------------------
+   🔧 Ajuste de altura real
+---------------------------- */
+function setRealAppHeight() {
+  const viewport = (window as any).visualViewport
+  const height = viewport?.height ?? window.innerHeight
+
+  document.documentElement.style.setProperty('--app-height', `${height}px`)
+}
+
+if ((window as any).visualViewport) {
+  ;(window as any).visualViewport.addEventListener('resize', setRealAppHeight)
+  ;(window as any).visualViewport.addEventListener('scroll', setRealAppHeight)
+}
+
+window.addEventListener('orientationchange', setRealAppHeight)
+
+setRealAppHeight()
+/* ------------------------- */
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)

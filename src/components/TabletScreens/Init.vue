@@ -1,34 +1,36 @@
 <!-- src/components/TabletScreens/Init.vue -->
 <template>
-  <img class="wallpaper" :src="assets.icons.wallpaper" alt="Init Wallpaper" />
-  <div class="container-fluid initContent m-0 p-0">
-    <div class="clock-container">
-      <div class="clock-time">
-        <p>{{ currentTime }}</p>
+  <div ref="screen" class="initWrapper">
+    <img class="wallpaper" :src="assets.icons.wallpaper" alt="Init Wallpaper" />
+    <div class="container-fluid initContent m-0 p-0">
+      <div class="clock-container">
+        <div class="clock-time">
+          <p>{{ currentTime }}</p>
+        </div>
+        <div class="clock-date">
+          <p>{{ currentDate }}</p>
+        </div>
       </div>
-      <div class="clock-date">
-        <p>{{ currentDate }}</p>
+      <div class="icon-grid mt-3" v-if="assets.initIconsReady">
+        <button class="btn app-button" @click="goTo('about')">
+          <img class="tamanioIconoApp" :src="assets.icons.about" alt="About" />
+        </button>
+        <button class="btn app-button" @click="goTo('projects')">
+          <img class="tamanioIconoApp" :src="assets.icons.projects" alt="Projects" />
+        </button>
+        <button class="btn app-button" @click="goTo('experience')">
+          <img class="tamanioIconoApp" :src="assets.icons.experience" alt="Experience" />
+        </button>
+        <button class="btn app-button" @click="goTo('skills')">
+          <img class="tamanioIconoApp" :src="assets.icons.skills" alt="Skills" />
+        </button>
+        <button class="btn app-button" @click="goTo('contact')">
+          <img class="tamanioIconoApp" :src="assets.icons.contact" alt="Contact" />
+        </button>
+        <button class="btn app-button" @click="goTo('blog')">
+          <img class="tamanioIconoApp" :src="assets.icons.blog" alt="Blog" />
+        </button>
       </div>
-    </div>
-    <div class="icon-grid mt-3" v-if="assets.initIconsReady">
-      <button class="btn app-button" @click="goTo('about')">
-        <img class="tamanioIconoApp" :src="assets.icons.about" alt="About" />
-      </button>
-      <button class="btn app-button" @click="goTo('projects')">
-        <img class="tamanioIconoApp" :src="assets.icons.projects" alt="Projects" />
-      </button>
-      <button class="btn app-button" @click="goTo('experience')">
-        <img class="tamanioIconoApp" :src="assets.icons.experience" alt="Experience" />
-      </button>
-      <button class="btn app-button" @click="goTo('skills')">
-        <img class="tamanioIconoApp" :src="assets.icons.skills" alt="Skills" />
-      </button>
-      <button class="btn app-button" @click="goTo('contact')">
-        <img class="tamanioIconoApp" :src="assets.icons.contact" alt="Contact" />
-      </button>
-      <button class="btn app-button" @click="goTo('blog')">
-        <img class="tamanioIconoApp" :src="assets.icons.blog" alt="Blog" />
-      </button>
     </div>
   </div>
 </template>
@@ -206,7 +208,8 @@ onBeforeUnmount((): void => {
 .initWrapper {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: var(--app-height);
+  max-height: var(--app-height);
   overflow: hidden;
   isolation: isolate;
 }
@@ -314,7 +317,7 @@ onBeforeUnmount((): void => {
     height: 25%;
   }
   .initContent {
-    min-height: 100dvh;
+    min-height: var(--app-height);
     display: flex;
     flex-direction: column;
     justify-content: start;

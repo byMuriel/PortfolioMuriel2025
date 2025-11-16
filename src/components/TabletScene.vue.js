@@ -582,17 +582,28 @@ function updateOverlayPosition() {
  *              - Posiciona el overlay como fixed en (0,0) y elimina transforms.
  *              - Define ancho/alto iguales a las dimensiones de la ventana.
  *****************************************************************************************/
+// function updateOverlayMobilePosition(): void {
+//   const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
+//   if (!overlay) return
+//   const w = window.innerWidth
+//   const h = window.innerHeight
+//   overlay.style.position = 'fixed'
+//   overlay.style.left = `${0}px`
+//   overlay.style.top = `${0}px`
+//   overlay.style.width = `${w}px`
+//   overlay.style.height = `${h}px`
+//   overlay.style.transform = 'none'
+// }
 function updateOverlayMobilePosition() {
     const overlay = document.getElementById('screen-overlay');
     if (!overlay)
         return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
     overlay.style.position = 'fixed';
-    overlay.style.left = `${0}px`;
-    overlay.style.top = `${0}px`;
-    overlay.style.width = `${w}px`;
-    overlay.style.height = `${h}px`;
+    overlay.style.left = '0';
+    overlay.style.top = '0';
+    overlay.style.width = '100%';
+    // Usamos la variable global que se actualiza con visualViewport
+    overlay.style.height = 'var(--app-height)';
     overlay.style.transform = 'none';
 }
 /*****************************************************************************************

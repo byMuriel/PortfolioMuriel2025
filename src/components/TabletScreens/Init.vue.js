@@ -168,6 +168,13 @@ let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['clock-date']} */ ;
 // CSS variable injection 
 // CSS variable injection end 
+__VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+    ref: "screen",
+    ...{ class: "initWrapper" },
+});
+/** @type {typeof __VLS_ctx.screen} */ ;
+// @ts-ignore
+[screen,];
 __VLS_asFunctionalElement(__VLS_elements.img)({
     ...{ class: "wallpaper" },
     src: (__VLS_ctx.assets.icons.wallpaper),
@@ -304,6 +311,7 @@ if (__VLS_ctx.assets.initIconsReady) {
     // @ts-ignore
     [assets,];
 }
+/** @type {__VLS_StyleScopedClasses['initWrapper']} */ ;
 /** @type {__VLS_StyleScopedClasses['wallpaper']} */ ;
 /** @type {__VLS_StyleScopedClasses['container-fluid']} */ ;
 /** @type {__VLS_StyleScopedClasses['initContent']} */ ;
@@ -338,6 +346,7 @@ const __VLS_self = (await import('vue')).defineComponent({
         assets: assets,
         currentTime: currentTime,
         currentDate: currentDate,
+        screen: screen,
         goTo: goTo,
     }),
     __typeEmits: {},
