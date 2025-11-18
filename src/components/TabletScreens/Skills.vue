@@ -40,11 +40,12 @@
     <!-- Skills Content -->
     <div v-for="cat in displayCategories" :key="cat" class="categoryBlock">
       <p class="categoryTitle">{{ cat }}</p>
+
       <!-- Button left displacement -->
-      <Transition name="fade-left">
+      <Transition name="fade-out">
         <button
           class="arrowBtn left"
-          :style="{ display: arrows[cat] && arrows[cat].left ? 'grid' : 'none' }"
+          v-show="!selectedSkill && arrows[cat] && arrows[cat].left"
           @click="nudge(cat, -1)"
           aria-label="Desplazar a la izquierda"
         >
@@ -61,20 +62,42 @@
         }"
         :ref="(el) => registerScroller(cat, el as HTMLDivElement | null)"
       >
-        <div v-for="skill in byCategory(cat)" :key="skill.name" class="m-0 p-0 skillCard">
+        <div
+          v-for="skill in byCategory(cat)"
+          :key="skill.name"
+          class="m-0 p-0 skillCard"
+          @click="openSkill(skill)"
+        >
           <img :src="skill.logo ?? FALLBACK_LOGO" :alt="skill.name" class="imgLogo" />
         </div>
       </div>
+
       <!-- Boton right displacement -->
-      <button
-        class="arrowBtn right"
-        v-show="arrows[cat] && arrows[cat].right"
-        @click="nudge(cat, 1)"
-        aria-label="Desplazar a la derecha"
-      >
-        ›
-      </button>
+      <Transition name="fade-out">
+        <button
+          class="arrowBtn right"
+          v-show="!selectedSkill && arrows[cat] && arrows[cat].right"
+          @click="nudge(cat, 1)"
+          aria-label="Desplazar a la derecha"
+        >
+          ›
+        </button>
+      </Transition>
     </div>
+
+    <!-- Fullscreen Skill Viewer -->
+    <Transition name="fade-skill">
+      <div v-if="selectedSkill" class="skillOverlay" @click.self="closeSkill">
+        <div class="skillOverlayContent">
+          <img
+            :src="selectedSkill.logo ?? FALLBACK_LOGO"
+            :alt="selectedSkill.name"
+            class="skillOverlayImg"
+            @error="onImgError"
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -87,6 +110,7 @@ import { useSkillsStore } from '@/stores/useSkills'
 import { useRedirectStore } from '@/stores/useRedirect'
 
 type Side = { left: boolean; right: boolean }
+type SkillItem = ReturnType<typeof store.byCategory>[number]
 const FALLBACK_LOGO = '/assets/SkillsLogos/LogoM.png'
 const appLogos = useAppLogosStore()
 const store = useSkillsStore()
@@ -98,6 +122,7 @@ const arrows = ref<Record<string, Side>>({})
 const scheduled = new Map<string, number>()
 const atRight = ref<Record<string, boolean>>({})
 const touchedRight = ref<Record<string, boolean>>({})
+const selectedSkill = ref<SkillItem | null>(null)
 
 /*****************************************************************************************
  * WATCHER: displayCategories
@@ -248,6 +273,52 @@ function scheduleArrows(cat: string) {
 
   scheduled.set(cat, id)
 }
+
+/*****************************************************************************************
+ * FUNCTION: openSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Opens the fullscreen viewer for a selected skill card.
+ *              - Stores the clicked skill in the selectedSkill ref.
+ *
+ * DESCRIPCIÓN: Abre el visor a pantalla completa para una skill seleccionada.
+ *              - Guarda la skill clicada en la ref selectedSkill.
+ *****************************************************************************************/
+function openSkill(skill: SkillItem) {
+  selectedSkill.value = skill
+}
+/*****************************************************************************************
+ * FUNCTION: closeSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Closes the fullscreen skill viewer.
+ *              - Resets selectedSkill to null.
+ *
+ * DESCRIPCIÓN: Cierra el visor a pantalla completa de la skill.
+ *              - Resetea selectedSkill a null.
+ *****************************************************************************************/
+function closeSkill() {
+  selectedSkill.value = null
+}
+/*****************************************************************************************
+ * FUNCTION: handleBack
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles the back action coming from the parent tablet container.
+ *              - If a skill is open in the fullscreen overlay, it closes it and
+ *                returns true (meaning the back was consumed locally).
+ *              - If no overlay is open, returns false so the parent can navigate.
+ *
+ * DESCRIPCIÓN: Maneja la acción de "volver" que llega desde el contenedor padre.
+ *              - Si hay una skill abierta en el overlay, la cierra y devuelve true
+ *                (indicando que el back se gestionó localmente).
+ *              - Si no hay overlay abierta, devuelve false para que el padre navegue.
+ *****************************************************************************************/
+function handleBack(): boolean {
+  if (selectedSkill.value) {
+    closeSkill()
+    return true
+  }
+  return false
+}
+
 /*****************************************************************************************
  * LIFECYCLE: onMounted
  * AUTHOR: Muriel Vitale.
@@ -282,11 +353,12 @@ onBeforeUnmount(() => {
   })
 })
 
-defineExpose({ nudge, registerScroller })
+defineExpose({ nudge, registerScroller, handleBack })
 </script>
 
 <style scoped>
 .skillsApplication {
+  position: relative;
   pointer-events: auto;
   width: 100%;
   height: 100%;
@@ -433,6 +505,7 @@ defineExpose({ nudge, registerScroller })
   font-size: 1.5rem;
   color: rgb(212, 212, 212);
 }
+
 /* Boton displacement */
 .arrowBtn {
   position: absolute;
@@ -471,35 +544,77 @@ defineExpose({ nudge, registerScroller })
 .arrowBtn.right {
   right: 0.25rem;
 }
-.fade-left-enter-from {
+.fade--enter-from {
   opacity: 0;
   transform: translateX(-6px);
 }
-.fade-left-enter-active {
+.fade--enter-active {
   transition:
     opacity 700ms ease,
     transform 700ms ease;
 }
-.fade-left-enter-to {
+.fade--enter-to {
   opacity: 1;
   transform: translateX(0);
 }
-.fade-left-leave-from {
+.fade--leave-from {
   opacity: 1;
   transform: translateX(0);
 }
-.fade-left-leave-active {
+.fade--leave-active {
   transition:
     opacity 900ms ease,
     transform 900ms ease;
 }
-.fade-left-leave-to {
+.fade--leave-to {
   opacity: 0;
   transform: translateX(-6px);
 }
+
+/* Overlay pantalla completa para la skill */
+.skillOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  z-index: 15; /* menor que el BackButton global, para que siga viéndose */
+}
+.skillOverlayContent {
+  width: 100%;
+  height: 100%;
+  max-width: 26rem;
+  max-height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 1.2rem;
+}
+.skillOverlayImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+}
+.fade-skill-enter-from,
+.fade-skill-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.fade-skill-enter-active,
+.fade-skill-leave-active {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fade-left-enter-active,
-  .fade-left-leave-active {
+  .fade-o-enter-active,
+  .fade-o-leave-active {
     transition: none;
   }
 }

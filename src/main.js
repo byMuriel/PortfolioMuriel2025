@@ -9,12 +9,10 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
    🔧 Ajuste de altura real
 ---------------------------- */
 function setRealAppHeight() {
-    // Usamos visualViewport si existe (mejor para barras que se esconden)
     const viewport = window.visualViewport;
     const height = viewport?.height ?? window.innerHeight;
     document.documentElement.style.setProperty('--app-height', `${height}px`);
 }
-// Escuchamos cambios reales del viewport
 if (window.visualViewport) {
     ;
     window.visualViewport.addEventListener('resize', setRealAppHeight);

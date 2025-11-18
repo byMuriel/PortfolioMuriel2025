@@ -2,7 +2,7 @@
 <template>
   <!-- Preloader -->
   <transition name="preloader-fade" @after-leave="onPreloaderLeave">
-    <div v-if="showPreloader && !assets.initIconsReady" class="preloader">
+    <div v-if="showPreloader" class="preloader">
       <div class="preloader-inner" :class="{ 'fade-out-dots': !isLoading }">
         <div class="dot-loader">
           <span class="dot dot1"></span>
@@ -13,7 +13,7 @@
           <span class="dot dot6"></span>
           <span class="dot dot7"></span>
         </div>
-        <p class="loading-text">CARGANDO...</p>
+        <p class="loading-text">LOADING...</p>
       </div>
     </div>
   </transition>
@@ -39,8 +39,21 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { provide, ref, onMounted, onBeforeUnmount, onBeforeMount } from 'vue'
 import { useAssetsPreload } from '@/stores/useAssetsPreload'
 import TabletContent from './TabletContent.vue'
+import { useAppLogosStore } from '@/stores/useAppLogos'
+import { useAboutStore } from '@/stores/useAbout'
+import { useSkillsStore } from '@/stores/useSkills'
+import { useProjectsStore } from '@/stores/useProjects'
+import { useExperiencesStore } from '@/stores/useExperiences'
+import { useContactChannelsStore } from '@/stores/useContactChannels'
 
 const assets = useAssetsPreload()
+const appLogosStore = useAppLogosStore()
+const aboutStore = useAboutStore()
+const skillsStore = useSkillsStore()
+const projectsStore = useProjectsStore()
+const experiencesStore = useExperiencesStore()
+const contactChannelsStore = useContactChannelsStore()
+
 const isMobile = window.matchMedia('(max-width: 420px)').matches
 const isLoading = ref<boolean>(true)
 const showPreloader = ref<boolean>(true)
@@ -724,18 +737,6 @@ function updateOverlayPosition(): void {
  *              - Posiciona el overlay como fixed en (0,0) y elimina transforms.
  *              - Define ancho/alto iguales a las dimensiones de la ventana.
  *****************************************************************************************/
-// function updateOverlayMobilePosition(): void {
-//   const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
-//   if (!overlay) return
-//   const w = window.innerWidth
-//   const h = window.innerHeight
-//   overlay.style.position = 'fixed'
-//   overlay.style.left = `${0}px`
-//   overlay.style.top = `${0}px`
-//   overlay.style.width = `${w}px`
-//   overlay.style.height = `${h}px`
-//   overlay.style.transform = 'none'
-// }
 function updateOverlayMobilePosition(): void {
   const overlay = document.getElementById('screen-overlay') as HTMLDivElement | null
   if (!overlay) return
@@ -748,7 +749,6 @@ function updateOverlayMobilePosition(): void {
   overlay.style.height = 'var(--app-height)'
   overlay.style.transform = 'none'
 }
-
 /*****************************************************************************************
  * FUNCTION: animateSecondZoom
  * AUTHOR: Muriel Vitale.
@@ -894,61 +894,26 @@ function startAnimation(time: DOMHighResTimeStamp): void {
 }
 
 onBeforeMount(async () => {
-  await assets.preloadInitIcons()
-  showPreloader.value = false
-})
-/*****************************************************************************************
- * LIFECYCLE HOOK: onMounted
- * AUTHOR: Muriel Vitale
- * DESCRIPTION: Vue lifecycle hook that runs when the component is mounted.
- *              Performs the following tasks:
- *              1. Loads multiple JSON data files in parallel (about, contact, experience,
- *                 projects, skills) using dynamic imports.
- *              2. Populates the reactive `data` object with the loaded JSON content.
- *              3. Waits for the window `load` event to ensure all assets (images, etc.) are fully loaded.
- *              4. Hides the loading indicators by:
- *                 - Setting `isLoading` to false.
- *                 - Setting `showPreloader` to false.
- *
- * DESCRIPCIÓN: Hook del ciclo de vida de Vue que se ejecuta cuando el componente se monta.
- *              Realiza las siguientes tareas:
- *              1. Carga múltiples archivos JSON en paralelo (about, contact, experience,
- *                 projects, skills) usando imports dinámicos.
- *              2. Llena el objeto reactivo `data` con el contenido de los JSON.
- *              3. Espera al evento `load` de la ventana para asegurar que todos los recursos
- *                 (incluyendo imágenes) estén completamente cargados.
- *              4. Oculta los indicadores de carga al:
- *                 - Establecer `isLoading` en falso.
- *                 - Establecer `showPreloader` en falso.
- *****************************************************************************************/
-onMounted(async () => {
-  await new Promise<void>((resolve) => {
-    if (document.readyState === 'complete') {
-      resolve()
-    } else {
-      window.addEventListener('load', () => resolve(), { once: true })
-    }
-  })
+  await Promise.all([
+    assets.preloadInitIcons(),
+    appLogosStore.preloadAssets(),
+    aboutStore.preloadAssets(),
+    skillsStore.preloadAssets(),
+    projectsStore.preloadAssets(),
+    experiencesStore.preloadAssets(),
+    contactChannelsStore.load(),
+    new Promise<void>((resolve) => {
+      if (document.readyState === 'complete') {
+        resolve()
+      } else {
+        window.addEventListener('load', () => resolve(), { once: true })
+      }
+    }),
+  ])
 
   isLoading.value = false
   showPreloader.value = false
 })
-/*****************************************************************************************
- * LIFECYCLE HOOK: onBeforeUnmount
- * AUTHOR: Muriel Vitale.
- * DESCRIPTION: Vue lifecycle hook that runs just before the component is destroyed.
- *              Cleans up rendering-related resources to avoid memory leaks:
- *              - Cancels the animation loop with `cancelAnimationFrame`.
- *              - Disposes of the WebGL renderer with `renderer.dispose()`.
- *              - Removes the renderer's canvas from the DOM if it was appended.
- * ***************************************************************************************
- * DESCRIPCIÓN: Hook de ciclo de vida de Vue que se ejecuta justo antes de que el componente
- *              sea destruido. Libera los recursos relacionados con el renderizado para evitar
- *              fugas de memoria:
- *              - Cancela el bucle de animación con `cancelAnimationFrame`.
- *              - Libera los recursos del renderizador con `renderer.dispose()`.
- *              - Elimina el canvas WebGL del DOM si fue añadido.
- *****************************************************************************************/
 onBeforeUnmount((): void => {
   if (animationId !== undefined) cancelAnimationFrame(animationId)
   renderer?.dispose()

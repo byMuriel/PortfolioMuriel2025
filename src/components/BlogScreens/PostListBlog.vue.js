@@ -1,6 +1,7 @@
 import { ref, onMounted } from 'vue';
 import { fetchBlogPosts } from '@/services/blog';
 import SinglePost from './SinglePost.vue';
+const isLoading = ref(true);
 const MAX_CHARS = 250;
 const datos = ref([]);
 const selectedPost = ref(null);
@@ -10,17 +11,84 @@ const openPost = (item) => {
 const closePost = () => {
     selectedPost.value = null;
 };
+/*****************************************************************************************
+ * FUNCTION: truncate
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION:
+ *   Shortens a text string to a maximum number of characters without cutting the last word
+ *   abruptly. If the text exceeds the limit, it trims the string at the last complete word
+ *   that fits and appends an ellipsis ("…").
+ *
+ * RETURNS: string → The truncated, well-formatted text.
+ *
+ * ---------------------------------------------------------------------------------------
+ * DESCRIPCIÓN:
+ *   Acorta un texto hasta un número máximo de caracteres sin cortar la última palabra de
+ *   forma brusca. Si el texto supera el límite, elimina cualquier palabra incompleta al
+ *   final y añade un punto suspensivo ("…").
+ *
+ * RETORNA: string → Texto truncado y bien formateado.
+ *****************************************************************************************/
 function truncate(text, max = MAX_CHARS) {
     if (!text)
         return '';
     return text.length <= max ? text : text.slice(0, max).replace(/\s+\S*$/, '') + '…';
 }
+/*****************************************************************************************
+ * FUNCTION: listar
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION:
+ *   Fetches all blog posts from the server and preloads their associated images before
+ *   displaying them. This prevents visual “pop-in” or loading flickers when posts appear.
+ *
+ *   PROCESS:
+ *     1. Fetch blog posts from the API (`fetchBlogPosts()`).
+ *     2. For each post with an image:
+ *          - Create a temporary Image() instance.
+ *          - Resolve whether the image loads successfully or fails (no blocking).
+ *     3. After all preload attempts settle, assign the posts to the reactive state.
+ *     4. If an error occurs during fetch, log it to the console.
+ *     5. Regardless of success or failure, hide the local preloader (`isLoading = false`).
+ *
+ * RETURNS: Promise<void>
+ *
+ * ---------------------------------------------------------------------------------------
+ * DESCRIPCIÓN:
+ *   Obtiene todos los posts del blog desde el servidor y precarga sus imágenes asociadas
+ *   antes de mostrarlos en pantalla. Esto evita parpadeos visuales o cargas “a destiempo”
+ *   cuando los posts aparecen.
+ *
+ *   PROCESO:
+ *     1. Solicita los posts al API (`fetchBlogPosts()`).
+ *     2. Para cada post con imagen:
+ *          - Crea una instancia temporal de Image().
+ *          - Resuelve tanto si la imagen carga como si falla (sin bloquear).
+ *     3. Una vez que todas las precargas finalizan, asigna los posts al estado reactivo.
+ *     4. Si ocurre un error en la carga, lo muestra en consola.
+ *     5. Independientemente del resultado, oculta el preloader local (`isLoading = false`).
+ *
+ * RETORNA: Promise<void>
+ *****************************************************************************************/
 async function listar() {
     try {
-        datos.value = await fetchBlogPosts();
+        const posts = await fetchBlogPosts();
+        await Promise.allSettled(posts.map((p) => {
+            if (!p.image)
+                return Promise.resolve();
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = p.image;
+            });
+        }));
+        datos.value = posts;
     }
     catch (e) {
         console.error('Error cargando posts:', e);
+    }
+    finally {
+        isLoading.value = false;
     }
 }
 onMounted(listar);
@@ -36,6 +104,43 @@ let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['postText']} */ ;
 // CSS variable injection 
 // CSS variable injection end 
+if (__VLS_ctx.isLoading) {
+    // @ts-ignore
+    [isLoading,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "local-preloader" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "local-preloader-inner" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "local-dot-loader" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot1" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot2" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot3" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot4" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot5" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot6" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.span, __VLS_elements.span)({
+        ...{ class: "local-dot dot7" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.p, __VLS_elements.p)({
+        ...{ class: "local-loading-text" },
+    });
+}
 __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
     ...{ class: "postListBlog" },
 });
@@ -119,6 +224,24 @@ else {
     [selectedPost, closePost,];
     var __VLS_2;
 }
+/** @type {__VLS_StyleScopedClasses['local-preloader']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-preloader-inner']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot-loader']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot1']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot2']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot3']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot4']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot5']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot6']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-dot']} */ ;
+/** @type {__VLS_StyleScopedClasses['dot7']} */ ;
+/** @type {__VLS_StyleScopedClasses['local-loading-text']} */ ;
 /** @type {__VLS_StyleScopedClasses['postListBlog']} */ ;
 /** @type {__VLS_StyleScopedClasses['postsContainers']} */ ;
 /** @type {__VLS_StyleScopedClasses['list-unstyled']} */ ;
@@ -144,6 +267,7 @@ var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup: () => ({
         SinglePost: SinglePost,
+        isLoading: isLoading,
         datos: datos,
         selectedPost: selectedPost,
         openPost: openPost,

@@ -226,6 +226,11 @@ onBeforeUnmount((): void => {
 .initContent {
   position: relative;
   z-index: 1;
+  min-height: var(--app-height);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  justify-content: start;
 }
 .clock-container {
   width: 90%;
@@ -233,7 +238,7 @@ onBeforeUnmount((): void => {
   background-color: rgba(3, 3, 3, 0.3);
   box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.5);
   border-radius: 1rem;
-  margin: 2rem auto 0 auto;
+  margin: 2rem auto 1rem auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -266,6 +271,8 @@ onBeforeUnmount((): void => {
   gap: 2rem;
   justify-items: center;
   padding: 1rem;
+  margin: 2.5rem auto 0;
+  max-width: 460px; /* “ancho de teléfono” en pantallas grandes también */
 }
 .tamanioIconoApp {
   width: 6rem;
@@ -307,11 +314,7 @@ onBeforeUnmount((): void => {
 .app-button {
   animation: popIn 0.4s ease forwards;
 }
-.initContent {
-  min-height: 100dvh;
-  justify-content: start;
-}
-
+/* Pantallas móviles */
 @media (max-width: 640px) {
   .clock-container {
     height: 25%;
@@ -345,6 +348,33 @@ onBeforeUnmount((): void => {
   }
   .clock-date {
     font-size: 1.5rem;
+  }
+}
+/* Pantallas muy pequeñas */
+@media (max-width: 380px), (max-height: 700px) {
+  .initWrapper {
+    padding-top: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+  .clock-container {
+    height: 22%;
+  }
+  .icon-grid {
+    gap: 1.4rem;
+    max-width: 340px;
+  }
+  .tamanioIconoApp {
+    width: 6.2rem;
+  }
+  .app-button {
+    border-radius: 20px;
+  }
+}
+/* Tablets y dispositivos de tamaño medio */
+@media (min-width: 600px) and (max-width: 1200px) {
+  .icon-grid {
+    max-width: 460px;
+    gap: 3.1rem;
   }
 }
 </style>

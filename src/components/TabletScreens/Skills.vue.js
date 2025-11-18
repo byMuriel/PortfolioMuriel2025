@@ -40,11 +40,12 @@
     <!-- Skills Content -->
     <div v-for="cat in displayCategories" :key="cat" class="categoryBlock">
       <p class="categoryTitle">{{ cat }}</p>
+
       <!-- Button left displacement -->
-      <Transition name="fade-left">
+      <Transition name="fade-out">
         <button
           class="arrowBtn left"
-          :style="{ display: arrows[cat] && arrows[cat].left ? 'grid' : 'none' }"
+          v-show="!selectedSkill && arrows[cat] && arrows[cat].left"
           @click="nudge(cat, -1)"
           aria-label="Desplazar a la izquierda"
         >
@@ -61,20 +62,42 @@
         }"
         :ref="(el) => registerScroller(cat, el as HTMLDivElement | null)"
       >
-        <div v-for="skill in byCategory(cat)" :key="skill.name" class="m-0 p-0 skillCard">
+        <div
+          v-for="skill in byCategory(cat)"
+          :key="skill.name"
+          class="m-0 p-0 skillCard"
+          @click="openSkill(skill)"
+        >
           <img :src="skill.logo ?? FALLBACK_LOGO" :alt="skill.name" class="imgLogo" />
         </div>
       </div>
+
       <!-- Boton right displacement -->
-      <button
-        class="arrowBtn right"
-        v-show="arrows[cat] && arrows[cat].right"
-        @click="nudge(cat, 1)"
-        aria-label="Desplazar a la derecha"
-      >
-        ›
-      </button>
+      <Transition name="fade-out">
+        <button
+          class="arrowBtn right"
+          v-show="!selectedSkill && arrows[cat] && arrows[cat].right"
+          @click="nudge(cat, 1)"
+          aria-label="Desplazar a la derecha"
+        >
+          ›
+        </button>
+      </Transition>
     </div>
+
+    <!-- Fullscreen Skill Viewer -->
+    <Transition name="fade-skill">
+      <div v-if="selectedSkill" class="skillOverlay" @click.self="closeSkill">
+        <div class="skillOverlayContent">
+          <img
+            :src="selectedSkill.logo ?? FALLBACK_LOGO"
+            :alt="selectedSkill.name"
+            class="skillOverlayImg"
+            @error="onImgError"
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -87,6 +110,7 @@ import { useSkillsStore } from '@/stores/useSkills'
 import { useRedirectStore } from '@/stores/useRedirect'
 
 type Side = { left: boolean; right: boolean }
+type SkillItem = ReturnType<typeof store.byCategory>[number]
 const FALLBACK_LOGO = '/assets/SkillsLogos/LogoM.png'
 const appLogos = useAppLogosStore()
 const store = useSkillsStore()
@@ -98,6 +122,7 @@ const arrows = ref<Record<string, Side>>({})
 const scheduled = new Map<string, number>()
 const atRight = ref<Record<string, boolean>>({})
 const touchedRight = ref<Record<string, boolean>>({})
+const selectedSkill = ref<SkillItem | null>(null)
 
 /*****************************************************************************************
  * WATCHER: displayCategories
@@ -248,6 +273,52 @@ function scheduleArrows(cat: string) {
 
   scheduled.set(cat, id)
 }
+
+/*****************************************************************************************
+ * FUNCTION: openSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Opens the fullscreen viewer for a selected skill card.
+ *              - Stores the clicked skill in the selectedSkill ref.
+ *
+ * DESCRIPCIÓN: Abre el visor a pantalla completa para una skill seleccionada.
+ *              - Guarda la skill clicada en la ref selectedSkill.
+ *****************************************************************************************/
+function openSkill(skill: SkillItem) {
+  selectedSkill.value = skill
+}
+/*****************************************************************************************
+ * FUNCTION: closeSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Closes the fullscreen skill viewer.
+ *              - Resets selectedSkill to null.
+ *
+ * DESCRIPCIÓN: Cierra el visor a pantalla completa de la skill.
+ *              - Resetea selectedSkill a null.
+ *****************************************************************************************/
+function closeSkill() {
+  selectedSkill.value = null
+}
+/*****************************************************************************************
+ * FUNCTION: handleBack
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles the back action coming from the parent tablet container.
+ *              - If a skill is open in the fullscreen overlay, it closes it and
+ *                returns true (meaning the back was consumed locally).
+ *              - If no overlay is open, returns false so the parent can navigate.
+ *
+ * DESCRIPCIÓN: Maneja la acción de "volver" que llega desde el contenedor padre.
+ *              - Si hay una skill abierta en el overlay, la cierra y devuelve true
+ *                (indicando que el back se gestionó localmente).
+ *              - Si no hay overlay abierta, devuelve false para que el padre navegue.
+ *****************************************************************************************/
+function handleBack(): boolean {
+  if (selectedSkill.value) {
+    closeSkill()
+    return true
+  }
+  return false
+}
+
 /*****************************************************************************************
  * LIFECYCLE: onMounted
  * AUTHOR: Muriel Vitale.
@@ -282,11 +353,12 @@ onBeforeUnmount(() => {
   })
 })
 
-defineExpose({ nudge, registerScroller })
+defineExpose({ nudge, registerScroller, handleBack })
 </script>
 
 <style scoped>
 .skillsApplication {
+  position: relative;
   pointer-events: auto;
   width: 100%;
   height: 100%;
@@ -433,6 +505,7 @@ defineExpose({ nudge, registerScroller })
   font-size: 1.5rem;
   color: rgb(212, 212, 212);
 }
+
 /* Boton displacement */
 .arrowBtn {
   position: absolute;
@@ -471,35 +544,77 @@ defineExpose({ nudge, registerScroller })
 .arrowBtn.right {
   right: 0.25rem;
 }
-.fade-left-enter-from {
+.fade--enter-from {
   opacity: 0;
   transform: translateX(-6px);
 }
-.fade-left-enter-active {
+.fade--enter-active {
   transition:
     opacity 700ms ease,
     transform 700ms ease;
 }
-.fade-left-enter-to {
+.fade--enter-to {
   opacity: 1;
   transform: translateX(0);
 }
-.fade-left-leave-from {
+.fade--leave-from {
   opacity: 1;
   transform: translateX(0);
 }
-.fade-left-leave-active {
+.fade--leave-active {
   transition:
     opacity 900ms ease,
     transform 900ms ease;
 }
-.fade-left-leave-to {
+.fade--leave-to {
   opacity: 0;
   transform: translateX(-6px);
 }
+
+/* Overlay pantalla completa para la skill */
+.skillOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  z-index: 15; /* menor que el BackButton global, para que siga viéndose */
+}
+.skillOverlayContent {
+  width: 100%;
+  height: 100%;
+  max-width: 26rem;
+  max-height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 1.2rem;
+}
+.skillOverlayImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+}
+.fade-skill-enter-from,
+.fade-skill-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.fade-skill-enter-active,
+.fade-skill-leave-active {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fade-left-enter-active,
-  .fade-left-leave-active {
+  .fade-o-enter-active,
+  .fade-o-leave-active {
     transition: none;
   }
 }
@@ -530,6 +645,7 @@ const arrows = ref({});
 const scheduled = new Map();
 const atRight = ref({});
 const touchedRight = ref({});
+const selectedSkill = ref(null);
 /*****************************************************************************************
  * WATCHER: displayCategories
  * AUTHOR: Muriel Vitale.
@@ -670,6 +786,50 @@ function scheduleArrows(cat) {
     scheduled.set(cat, id);
 }
 /*****************************************************************************************
+ * FUNCTION: openSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Opens the fullscreen viewer for a selected skill card.
+ *              - Stores the clicked skill in the selectedSkill ref.
+ *
+ * DESCRIPCIÓN: Abre el visor a pantalla completa para una skill seleccionada.
+ *              - Guarda la skill clicada en la ref selectedSkill.
+ *****************************************************************************************/
+function openSkill(skill) {
+    selectedSkill.value = skill;
+}
+/*****************************************************************************************
+ * FUNCTION: closeSkill
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Closes the fullscreen skill viewer.
+ *              - Resets selectedSkill to null.
+ *
+ * DESCRIPCIÓN: Cierra el visor a pantalla completa de la skill.
+ *              - Resetea selectedSkill a null.
+ *****************************************************************************************/
+function closeSkill() {
+    selectedSkill.value = null;
+}
+/*****************************************************************************************
+ * FUNCTION: handleBack
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION: Handles the back action coming from the parent tablet container.
+ *              - If a skill is open in the fullscreen overlay, it closes it and
+ *                returns true (meaning the back was consumed locally).
+ *              - If no overlay is open, returns false so the parent can navigate.
+ *
+ * DESCRIPCIÓN: Maneja la acción de "volver" que llega desde el contenedor padre.
+ *              - Si hay una skill abierta en el overlay, la cierra y devuelve true
+ *                (indicando que el back se gestionó localmente).
+ *              - Si no hay overlay abierta, devuelve false para que el padre navegue.
+ *****************************************************************************************/
+function handleBack() {
+    if (selectedSkill.value) {
+        closeSkill();
+        return true;
+    }
+    return false;
+}
+/*****************************************************************************************
  * LIFECYCLE: onMounted
  * AUTHOR: Muriel Vitale.
  * DESCRIPTION: Initializes the skills module when the component is mounted.
@@ -703,7 +863,7 @@ onBeforeUnmount(() => {
             el._cleanup();
     });
 });
-const __VLS_exposed = { nudge, registerScroller };
+const __VLS_exposed = { nudge, registerScroller, handleBack };
 defineExpose(__VLS_exposed);
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
@@ -720,8 +880,6 @@ let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['arrowBtn']} */ ;
 /** @type {__VLS_StyleScopedClasses['arrowBtn']} */ ;
 /** @type {__VLS_StyleScopedClasses['arrowBtn']} */ ;
-/** @type {__VLS_StyleScopedClasses['fade-left-enter-active']} */ ;
-/** @type {__VLS_StyleScopedClasses['fade-left-leave-active']} */ ;
 /** @type {__VLS_StyleScopedClasses['containerSkills']} */ ;
 // CSS variable injection 
 // CSS variable injection end 
@@ -838,10 +996,12 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
     Transition;
     // @ts-ignore
     const __VLS_1 = __VLS_asFunctionalComponent(__VLS_0, new __VLS_0({
-        name: "fade-left",
+        name: "fade-out",
+        persisted: true,
     }));
     const __VLS_2 = __VLS_1({
-        name: "fade-left",
+        name: "fade-out",
+        persisted: true,
     }, ...__VLS_functionalComponentArgsRest(__VLS_1));
     const { default: __VLS_4 } = __VLS_3.slots;
     __VLS_asFunctionalElement(__VLS_elements.button, __VLS_elements.button)({
@@ -851,11 +1011,11 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
                 [nudge,];
             } },
         ...{ class: "arrowBtn left" },
-        ...{ style: ({ display: __VLS_ctx.arrows[cat] && __VLS_ctx.arrows[cat].left ? 'grid' : 'none' }) },
         'aria-label': "Desplazar a la izquierda",
     });
+    __VLS_asFunctionalDirective(__VLS_directives.vShow)(null, { ...__VLS_directiveBindingRestFields, value: (!__VLS_ctx.selectedSkill && __VLS_ctx.arrows[cat] && __VLS_ctx.arrows[cat].left) }, null, null);
     // @ts-ignore
-    [arrows, arrows,];
+    [vShow, selectedSkill, arrows, arrows,];
     var __VLS_3;
     __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
         ...{ class: "containerSkills" },
@@ -871,6 +1031,11 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
         // @ts-ignore
         [byCategory,];
         __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+            ...{ onClick: (...[$event]) => {
+                    __VLS_ctx.openSkill(skill);
+                    // @ts-ignore
+                    [openSkill,];
+                } },
             key: (skill.name),
             ...{ class: "m-0 p-0 skillCard" },
         });
@@ -882,6 +1047,20 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
         // @ts-ignore
         [FALLBACK_LOGO,];
     }
+    const __VLS_5 = {}.Transition;
+    /** @type {[typeof __VLS_components.Transition, typeof __VLS_components.Transition, ]} */ ;
+    // @ts-ignore
+    Transition;
+    // @ts-ignore
+    const __VLS_6 = __VLS_asFunctionalComponent(__VLS_5, new __VLS_5({
+        name: "fade-out",
+        persisted: true,
+    }));
+    const __VLS_7 = __VLS_6({
+        name: "fade-out",
+        persisted: true,
+    }, ...__VLS_functionalComponentArgsRest(__VLS_6));
+    const { default: __VLS_9 } = __VLS_8.slots;
     __VLS_asFunctionalElement(__VLS_elements.button, __VLS_elements.button)({
         ...{ onClick: (...[$event]) => {
                 __VLS_ctx.nudge(cat, 1);
@@ -891,10 +1070,45 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
         ...{ class: "arrowBtn right" },
         'aria-label': "Desplazar a la derecha",
     });
-    __VLS_asFunctionalDirective(__VLS_directives.vShow)(null, { ...__VLS_directiveBindingRestFields, value: (__VLS_ctx.arrows[cat] && __VLS_ctx.arrows[cat].right) }, null, null);
+    __VLS_asFunctionalDirective(__VLS_directives.vShow)(null, { ...__VLS_directiveBindingRestFields, value: (!__VLS_ctx.selectedSkill && __VLS_ctx.arrows[cat] && __VLS_ctx.arrows[cat].right) }, null, null);
     // @ts-ignore
-    [arrows, arrows, vShow,];
+    [vShow, selectedSkill, arrows, arrows,];
+    var __VLS_8;
 }
+const __VLS_10 = {}.Transition;
+/** @type {[typeof __VLS_components.Transition, typeof __VLS_components.Transition, ]} */ ;
+// @ts-ignore
+Transition;
+// @ts-ignore
+const __VLS_11 = __VLS_asFunctionalComponent(__VLS_10, new __VLS_10({
+    name: "fade-skill",
+}));
+const __VLS_12 = __VLS_11({
+    name: "fade-skill",
+}, ...__VLS_functionalComponentArgsRest(__VLS_11));
+const { default: __VLS_14 } = __VLS_13.slots;
+if (__VLS_ctx.selectedSkill) {
+    // @ts-ignore
+    [selectedSkill,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ onClick: (__VLS_ctx.closeSkill) },
+        ...{ class: "skillOverlay" },
+    });
+    // @ts-ignore
+    [closeSkill,];
+    __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({
+        ...{ class: "skillOverlayContent" },
+    });
+    __VLS_asFunctionalElement(__VLS_elements.img)({
+        ...{ onError: (__VLS_ctx.onImgError) },
+        src: (__VLS_ctx.selectedSkill.logo ?? __VLS_ctx.FALLBACK_LOGO),
+        alt: (__VLS_ctx.selectedSkill.name),
+        ...{ class: "skillOverlayImg" },
+    });
+    // @ts-ignore
+    [onImgError, selectedSkill, selectedSkill, FALLBACK_LOGO,];
+}
+var __VLS_13;
 /** @type {__VLS_StyleScopedClasses['container-fluid']} */ ;
 /** @type {__VLS_StyleScopedClasses['skillsApplication']} */ ;
 /** @type {__VLS_StyleScopedClasses['tools']} */ ;
@@ -934,6 +1148,9 @@ for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.displayCategories))) {
 /** @type {__VLS_StyleScopedClasses['imgLogo']} */ ;
 /** @type {__VLS_StyleScopedClasses['arrowBtn']} */ ;
 /** @type {__VLS_StyleScopedClasses['right']} */ ;
+/** @type {__VLS_StyleScopedClasses['skillOverlay']} */ ;
+/** @type {__VLS_StyleScopedClasses['skillOverlayContent']} */ ;
+/** @type {__VLS_StyleScopedClasses['skillOverlayImg']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup: () => ({
@@ -942,10 +1159,13 @@ const __VLS_self = (await import('vue')).defineComponent({
         displayCategories: displayCategories,
         byCategory: byCategory,
         arrows: arrows,
+        selectedSkill: selectedSkill,
         onImgError: onImgError,
         go: go,
         registerScroller: registerScroller,
         nudge: nudge,
+        openSkill: openSkill,
+        closeSkill: closeSkill,
     }),
 });
 export default (await import('vue')).defineComponent({

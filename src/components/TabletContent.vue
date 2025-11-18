@@ -6,7 +6,8 @@
       @change-screen="toReturn"
       class="back-button"
     />
-    <component :is="currentView" @change-screen="handleChangeScreen" />
+    <component :is="currentView" @change-screen="handleChangeScreen" ref="activeScreen" />
+
     <!-- Toast “Press again to exit” -->
     <div
       v-if="showExitHint"
@@ -22,12 +23,7 @@
 import { ref, onBeforeUnmount, onMounted, shallowRef, type Ref, type ShallowRef, watch } from 'vue'
 import { useRedirectStore, type ScreenName } from '@/stores/useRedirect'
 import { useLastScreen } from '@/stores/useLastScreen'
-import { useAppLogosStore } from '@/stores/useAppLogos'
-import { useAboutStore } from '@/stores/useAbout'
-import { useSkillsStore } from '@/stores/useSkills'
-import { useProjectsStore } from '@/stores/useProjects'
-import { useExperiencesStore } from '@/stores/useExperiences'
-import { useContactChannelsStore } from '@/stores/useContactChannels'
+import type { ComponentPublicInstance } from 'vue'
 import type { Component } from 'vue'
 import BackButton from '@/components/CommonComponents/BackButton.vue'
 import Init from './TabletScreens/Init.vue'
@@ -39,14 +35,8 @@ import Contact from './TabletScreens/Contact.vue'
 import ContactEmail from './TabletScreens/ContactEmail.vue'
 import Blog from './Blog.vue'
 
-const appLogosStore = useAppLogosStore()
 const redirectStore = useRedirectStore()
 const lastScreen = useLastScreen()
-const aboutStore = useAboutStore()
-const skillsStore = useSkillsStore()
-const projectsStore = useProjectsStore()
-const experiencesStore = useExperiencesStore()
-const contactChannelsStore = useContactChannelsStore()
 
 let popHandler: ((e: PopStateEvent) => void) | null = null
 let lastBackTs = 0
@@ -62,12 +52,22 @@ const views: Record<ScreenName, Component> = {
   Blog,
 } as const satisfies Record<string, Component>
 const currentView: ShallowRef<Component> = shallowRef(Init as Component)
+const activeScreen = ref<ComponentPublicInstance | null>(null)
 const handleChangeScreen = (newView: keyof typeof views): void => {
   lastScreen.changeLastScreen(newView)
   currentView.value = views[newView] || Init
   redirectStore.current = newView
 }
 const toReturn = (): void => {
+  const view = activeScreen.value as any
+
+  // Si la vista actual tiene un manejador de back y lo consume, no navegamos
+  if (view && typeof view.handleBack === 'function') {
+    const consumed = view.handleBack()
+    if (consumed) return
+  }
+
+  // Comportamiento normal si nadie consumió el back
   if (lastScreen.lastScreen !== redirectStore.current) {
     redirectStore.current = lastScreen.lastScreen
   } else {
@@ -80,7 +80,27 @@ const domReady: Promise<void> = new Promise<void>((resolve) => {
   onMounted(resolve)
 })
 const showExitHint = ref(false)
+
 let hideHintTimer: number | null = null
+
+/*****************************************************************************************
+ * FUNCTION: hintExitOnce
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION:
+ *   Displays a temporary visual hint (“Press again to exit”) when the user presses the
+ *   back button while already on the Init screen. The hint remains visible for a limited
+ *   time and then automatically hides.
+ *
+ * RETURNS: void
+ *
+ * ---------------------------------------------------------------------------------------
+ * DESCRIPCIÓN:
+ *   Muestra un aviso temporal (“Press again to exit”) cuando el usuario presiona el botón
+ *   de retroceso estando ya en la pantalla Init. El mensaje se mantiene visible durante un
+ *   tiempo limitado y luego se oculta automáticamente.
+ *
+ * RETORNA: void
+ *****************************************************************************************/
 function hintExitOnce(ms = 1500) {
   showExitHint.value = true
   if (hideHintTimer) window.clearTimeout(hideHintTimer)
@@ -120,40 +140,23 @@ watch(
  *              - Carga los canales de contacto para disponer de ellos de forma inmediata.
  *              - Mejora la experiencia del usuario al reducir los tiempos de carga entre pantallas.
  *****************************************************************************************/
-onMounted(async () => {
-  await Promise.all([
-    appLogosStore.preloadAssets(),
-    aboutStore.preloadAssets(),
-    skillsStore.preloadAssets(),
-    projectsStore.preloadAssets(),
-    experiencesStore.preloadAssets(),
-    contactChannelsStore.load(),
-  ])
-  // Empuja un estado "ancla" para consumir el primer back sin salir
+onMounted(() => {
   history.pushState({ spa: true }, '', location.href)
 
   popHandler = () => {
     const now = Date.now()
 
-    // Si NO estamos en Init → forzar Init y reponer estado
     if (redirectStore.current !== 'Init') {
       redirectStore.goInit()
       history.pushState({ spa: true }, '', location.href)
       return
     }
 
-    // Ya estamos en Init:
-    //  - Primer atrás → mostrar aviso y reponer estado (no salimos)
-    //  - Segundo atrás (rápido) → permitir salir (no reponemos el estado)
     if (now - lastBackTs < 1500) {
-      // 2do toque: permitir salida
-      // Importante: quitar el listener para no interferir con el cierre
       if (popHandler) window.removeEventListener('popstate', popHandler)
-      // No hacemos pushState aquí: dejamos que el SO/navegador salga
       return
     }
 
-    // 1er toque: avisar y bloquear salida reponiendo el estado
     lastBackTs = now
     console.log('[BACK] Hint exit once')
     hintExitOnce(1500)

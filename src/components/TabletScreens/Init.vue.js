@@ -158,7 +158,6 @@ let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['app-button']} */ ;
 /** @type {__VLS_StyleScopedClasses['app-button']} */ ;
 /** @type {__VLS_StyleScopedClasses['app-button']} */ ;
-/** @type {__VLS_StyleScopedClasses['initContent']} */ ;
 /** @type {__VLS_StyleScopedClasses['clock-container']} */ ;
 /** @type {__VLS_StyleScopedClasses['initContent']} */ ;
 /** @type {__VLS_StyleScopedClasses['icon-grid']} */ ;
@@ -166,6 +165,12 @@ let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['app-button']} */ ;
 /** @type {__VLS_StyleScopedClasses['clock-time']} */ ;
 /** @type {__VLS_StyleScopedClasses['clock-date']} */ ;
+/** @type {__VLS_StyleScopedClasses['initWrapper']} */ ;
+/** @type {__VLS_StyleScopedClasses['clock-container']} */ ;
+/** @type {__VLS_StyleScopedClasses['icon-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['tamanioIconoApp']} */ ;
+/** @type {__VLS_StyleScopedClasses['app-button']} */ ;
+/** @type {__VLS_StyleScopedClasses['icon-grid']} */ ;
 // CSS variable injection 
 // CSS variable injection end 
 __VLS_asFunctionalElement(__VLS_elements.div, __VLS_elements.div)({

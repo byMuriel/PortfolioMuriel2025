@@ -1,12 +1,6 @@
 import { ref, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { useRedirectStore } from '@/stores/useRedirect';
 import { useLastScreen } from '@/stores/useLastScreen';
-import { useAppLogosStore } from '@/stores/useAppLogos';
-import { useAboutStore } from '@/stores/useAbout';
-import { useSkillsStore } from '@/stores/useSkills';
-import { useProjectsStore } from '@/stores/useProjects';
-import { useExperiencesStore } from '@/stores/useExperiences';
-import { useContactChannelsStore } from '@/stores/useContactChannels';
 import BackButton from '@/components/CommonComponents/BackButton.vue';
 import Init from './TabletScreens/Init.vue';
 import About from './TabletScreens/About.vue';
@@ -16,14 +10,8 @@ import Projects from './TabletScreens/Projects.vue';
 import Contact from './TabletScreens/Contact.vue';
 import ContactEmail from './TabletScreens/ContactEmail.vue';
 import Blog from './Blog.vue';
-const appLogosStore = useAppLogosStore();
 const redirectStore = useRedirectStore();
 const lastScreen = useLastScreen();
-const aboutStore = useAboutStore();
-const skillsStore = useSkillsStore();
-const projectsStore = useProjectsStore();
-const experiencesStore = useExperiencesStore();
-const contactChannelsStore = useContactChannelsStore();
 let popHandler = null;
 let lastBackTs = 0;
 const views = {
@@ -37,12 +25,21 @@ const views = {
     Blog,
 };
 const currentView = shallowRef(Init);
+const activeScreen = ref(null);
 const handleChangeScreen = (newView) => {
     lastScreen.changeLastScreen(newView);
     currentView.value = views[newView] || Init;
     redirectStore.current = newView;
 };
 const toReturn = () => {
+    const view = activeScreen.value;
+    // Si la vista actual tiene un manejador de back y lo consume, no navegamos
+    if (view && typeof view.handleBack === 'function') {
+        const consumed = view.handleBack();
+        if (consumed)
+            return;
+    }
+    // Comportamiento normal si nadie consumió el back
     if (lastScreen.lastScreen !== redirectStore.current) {
         redirectStore.current = lastScreen.lastScreen;
     }
@@ -57,6 +54,24 @@ const domReady = new Promise((resolve) => {
 });
 const showExitHint = ref(false);
 let hideHintTimer = null;
+/*****************************************************************************************
+ * FUNCTION: hintExitOnce
+ * AUTHOR: Muriel Vitale.
+ * DESCRIPTION:
+ *   Displays a temporary visual hint (“Press again to exit”) when the user presses the
+ *   back button while already on the Init screen. The hint remains visible for a limited
+ *   time and then automatically hides.
+ *
+ * RETURNS: void
+ *
+ * ---------------------------------------------------------------------------------------
+ * DESCRIPCIÓN:
+ *   Muestra un aviso temporal (“Press again to exit”) cuando el usuario presiona el botón
+ *   de retroceso estando ya en la pantalla Init. El mensaje se mantiene visible durante un
+ *   tiempo limitado y luego se oculta automáticamente.
+ *
+ * RETORNA: void
+ *****************************************************************************************/
 function hintExitOnce(ms = 1500) {
     showExitHint.value = true;
     if (hideHintTimer)
@@ -92,37 +107,20 @@ watch(() => redirectStore.current, (newView) => {
  *              - Carga los canales de contacto para disponer de ellos de forma inmediata.
  *              - Mejora la experiencia del usuario al reducir los tiempos de carga entre pantallas.
  *****************************************************************************************/
-onMounted(async () => {
-    await Promise.all([
-        appLogosStore.preloadAssets(),
-        aboutStore.preloadAssets(),
-        skillsStore.preloadAssets(),
-        projectsStore.preloadAssets(),
-        experiencesStore.preloadAssets(),
-        contactChannelsStore.load(),
-    ]);
-    // Empuja un estado "ancla" para consumir el primer back sin salir
+onMounted(() => {
     history.pushState({ spa: true }, '', location.href);
     popHandler = () => {
         const now = Date.now();
-        // Si NO estamos en Init → forzar Init y reponer estado
         if (redirectStore.current !== 'Init') {
             redirectStore.goInit();
             history.pushState({ spa: true }, '', location.href);
             return;
         }
-        // Ya estamos en Init:
-        //  - Primer atrás → mostrar aviso y reponer estado (no salimos)
-        //  - Segundo atrás (rápido) → permitir salir (no reponemos el estado)
         if (now - lastBackTs < 1500) {
-            // 2do toque: permitir salida
-            // Importante: quitar el listener para no interferir con el cierre
             if (popHandler)
                 window.removeEventListener('popstate', popHandler);
-            // No hacemos pushState aquí: dejamos que el SO/navegador salga
             return;
         }
-        // 1er toque: avisar y bloquear salida reponiendo el estado
         lastBackTs = now;
         console.log('[BACK] Hint exit once');
         hintExitOnce(1500);
@@ -180,16 +178,20 @@ const __VLS_7 = ((__VLS_ctx.currentView));
 // @ts-ignore
 const __VLS_8 = __VLS_asFunctionalComponent(__VLS_7, new __VLS_7({
     ...{ 'onChangeScreen': {} },
+    ref: "activeScreen",
 }));
 const __VLS_9 = __VLS_8({
     ...{ 'onChangeScreen': {} },
+    ref: "activeScreen",
 }, ...__VLS_functionalComponentArgsRest(__VLS_8));
 let __VLS_11;
 let __VLS_12;
 const __VLS_13 = ({ changeScreen: {} },
     { onChangeScreen: (__VLS_ctx.handleChangeScreen) });
+/** @type {typeof __VLS_ctx.activeScreen} */ ;
+var __VLS_14 = {};
 // @ts-ignore
-[currentView, handleChangeScreen,];
+[currentView, handleChangeScreen, activeScreen,];
 var __VLS_10;
 if (__VLS_ctx.showExitHint) {
     // @ts-ignore
@@ -215,12 +217,15 @@ if (__VLS_ctx.showExitHint) {
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-3']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow']} */ ;
+// @ts-ignore
+var __VLS_15 = __VLS_14;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup: () => ({
         BackButton: BackButton,
         redirectStore: redirectStore,
         currentView: currentView,
+        activeScreen: activeScreen,
         handleChangeScreen: handleChangeScreen,
         toReturn: toReturn,
         screen: screen,
